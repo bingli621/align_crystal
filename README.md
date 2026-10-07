@@ -1,5 +1,8 @@
 # align_crystal
 
+[![CI](https://github.com/bingli621/align_crystal/actions/workflows/ci.yml/badge.svg)](https://github.com/bingli621/align_crystal/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/bingli621/align_crystal/branch/main/graph/badge.svg)](https://codecov.io/gh/bingli621/align_crystal)
+
 Single-crystal diffractometer simulation (McStasScript) with a three-axis goniometer, and
 tools to read the McStas NeXus output (McStasToX, scippneutron) and convert to momentum transfer.
 
@@ -18,7 +21,7 @@ tools to read the McStas NeXus output (McStasToX, scippneutron) and convert to m
 pixi run python src/align_crystal/simulate.py        # writes work/latest/mccode.h5
 pixi run python scripts/plot_scan_2d.py      # output/scan.gif
 pixi run python scripts/plot_scan_Q.py       # output/scan_Q.gif
-pixi run pytest
+pixi run pytest --cov=align_crystal --cov-report=term-missing   # tests + coverage
 ```
 
 `mcstastox` is installed from the `entry_choice` branch, which can read individual scan entries.

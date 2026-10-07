@@ -1,0 +1,7 @@
+.pixi/
+__pycache__/
+*.egg-info/
+dist/
+work/
+.pytest_cache/
+.DS_Store

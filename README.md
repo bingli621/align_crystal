@@ -12,7 +12,10 @@ tools to read the McStas NeXus output (McStasToX, scippneutron) and convert to m
 - `src/align_crystal/samples.py` – crystals and their orientation (`la2ni7()`, `aluminium()`).
 - `src/align_crystal/simulate.py` – `run(...)`, also runnable as a script; supports mcrun scans
   (`omega="-48,73"`, `custom_flags="-N 122"`). McStas-generated files go to `work/`.
-- `src/align_crystal/io.py` – `read_scan` (mcstastox), `to_Q` (lab-frame Q), `to_sample_frame`.
+- `src/align_crystal/io.py` – `read_scan` (mcstastox).
+- `src/align_crystal/reduction.py` – `to_Q` (lab-frame Q), `to_sample_frame`.
+- `src/align_crystal/normalization.py` – `detector_solid_angle` (pixel solid angles; the math is in `solid_angle.py`).
+- `src/align_crystal/peaks.py` – `find_peaks`: peak list in the sample-frame Q space (centre of mass, propagated errors).
 - `scripts/plot_scan_2d.py`, `scripts/plot_scan_Q.py` – gifs of the detector and of (Qx, Qz) in the sample frame.
 
 ## Use

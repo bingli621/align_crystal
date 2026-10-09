@@ -17,7 +17,9 @@ import scipp as sc
 from matplotlib.animation import FuncAnimation, PillowWriter
 from matplotlib.colors import LogNorm
 
-from align_crystal.io import read_scan, to_Q, to_sample_frame
+from align_crystal.io import read_scan
+from align_crystal.normalization import normalize_scan
+from align_crystal.reduction import to_Q, to_sample_frame
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -29,13 +31,26 @@ def plot_scan_Q(
     bins=(200, 200),
     fps=3,
     accumulate=True,
+    normalize=False,
+    monitor_file=None,
     show=True,
 ):
     """Saves a gif to `out` (None: don't save); returns the FuncAnimation.
 
+    With `normalize`, the intensities are divided by the incident monitor and the pixel solid
+    angle (see `normalize_scan`), in 1/sr. For data from `run_from_beam` give the beam run's
+    `monitor_file` (`work/beam/mccode.h5`).
+
     With `accumulate`, frame i shows the sum of all scan points up to i (previous frames are kept).
     """
-    points = read_scan(folder)
+    if normalize:
+        scan = normalize_scan(folder, monitor_file=monitor_file)
+        points = [
+            ({k: v.value for k, v in g["parameters"].items()}, g["events"].bins.sum())
+            for g in scan.values()
+        ]
+    else:
+        points = read_scan(folder)
     qs = [
         to_sample_frame(to_Q(ev, sc.scalar(p["wavelength"], unit="angstrom")), p)
         for p, ev in points
@@ -62,7 +77,7 @@ def plot_scan_Q(
     mesh = ax.pcolormesh(
         xe, ye, np.ma.masked_less_equal(hists[0].T, 0), cmap="jet", norm=LogNorm(vmin, vmax)
     )
-    fig.colorbar(mesh, label="intensity summed over Qy (n/s)")
+    fig.colorbar(mesh, label="normalized intensity summed over Qy (1/sr)" if normalize else "intensity summed over Qy (n/s)")
     ax.set_xlabel("Qx sample (1/Å)")
     ax.set_ylabel("Qz sample (1/Å)")
     ax.set_aspect("equal")
@@ -86,4 +101,10 @@ def plot_scan_Q(
 
 
 if __name__ == "__main__":
-    plot_scan_Q()
+    # normalized (Qx, Qz) map of a run_from_beam scan, using the monitor of the beam run
+    plot_scan_Q(
+        folder=ROOT / "work" / "split",
+        out=ROOT / "output" / "scan_Q_normalized.gif",
+        normalize=True,
+        monitor_file=ROOT / "work" / "beam" / "mccode.h5",
+    )

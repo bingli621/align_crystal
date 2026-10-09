@@ -76,6 +76,14 @@ def build_diffractometer(
     slit1.xwidth = beam_size
     slit1.yheight = beam_size
 
+    # Incident beam monitor 10 cm before the sample (integrated intensity; the neutrons carry on).
+    # It is placed before `sample_pos`, the point where the beam can be dumped to a file.
+    monitor = inst.add_component("incident_monitor", "Monitor", RELATIVE="source")
+    monitor.set_AT([0, 0, 1.9], RELATIVE="source")
+    monitor.xwidth = 2 * beam_size
+    monitor.yheight = 2 * beam_size
+    monitor.restore_neutron = 1
+
     # Sample position, beam hits the goniometer centre
     sample_pos = inst.add_component("sample_pos", "Arm")
     sample_pos.set_AT([0, 0, 2.0], RELATIVE="source")
@@ -99,6 +107,7 @@ def build_diffractometer(
     xtal.yheight = sample_size
     xtal.zdepth = sample_size
     xtal.mosaic = sample.mosaic
+    xtal.order = 1  # single scattering only (no multiple scattering): much faster
     xtal.reflections = f'"{sample.reflections}"'
     xtal.recip_cell = 1
     xtal.ax, xtal.ay, xtal.az = sample.astar
@@ -128,3 +137,4 @@ if __name__ == "__main__":
     inst = build_diffractometer()
     inst.show_parameters()
     inst.show_components()
+    inst.show_diagram()

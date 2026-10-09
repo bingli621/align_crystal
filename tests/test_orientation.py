@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from align_crystal.io import goniometer_matrix
+from align_crystal.reduction import goniometer_matrix
 from align_crystal.samples import la2ni7
 
 

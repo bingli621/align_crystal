@@ -9,7 +9,7 @@ import h5py
 import numpy as np
 from mcstasscript.helper.managed_mcrun import ManagedMcrun
 
-from align_crystal.instrument import load_config
+from align_crystal.file_io import load_config
 from align_crystal.mcstas.builder import OUTPUT_DIR, build_instrument
 
 

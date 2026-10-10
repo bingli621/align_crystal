@@ -1,27 +1,32 @@
-"""The instrument as a configuration: dataclasses (instrument.py), loaded from YAML on top of
-params.yaml (loader.py). No McStas knowledge, see mcstas/ for that."""
+"""Instruments as configurations (no McStas knowledge, see mcstas/ for that).
 
-from align_crystal.instrument.loader import load_config, save_config
-from align_crystal.instrument.instrument import (
+components.py   the kinds of component, one dataclass each
+instrument.py   Instrument: the components of an instrument, each with its placement
+diffractometer.py   Diffractometer(Instrument): its components and defaults (params.yaml)
+"""
+
+from align_crystal.instrument.components import (
+    Arm,
     Component,
-    Crystal,
-    Detector,
-    DiffractometerConfig,
-    GonioArm,
-    Placement,
+    Monitor,
+    Monitor_nD,
+    Progress_bar,
+    Single_crystal,
     Slit,
-    Source,
+    Source_simple,
 )
+from align_crystal.instrument.diffractometer import Diffractometer
+from align_crystal.instrument.instrument import Instrument
 
 __all__ = [
+    "Arm",
     "Component",
-    "Crystal",
-    "Detector",
-    "DiffractometerConfig",
-    "GonioArm",
-    "Placement",
+    "Diffractometer",
+    "Instrument",
+    "Monitor",
+    "Monitor_nD",
+    "Progress_bar",
+    "Single_crystal",
     "Slit",
-    "Source",
-    "load_config",
-    "save_config",
+    "Source_simple",
 ]

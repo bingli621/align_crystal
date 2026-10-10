@@ -1,104 +1,64 @@
-"""Domain model of the diffractometer: one dataclass per component.
+"""A generic instrument: a set of components, each with a placement.
 
-Pure entities, no file, YAML or McStas knowledge (see loader.py to load them and
-mcstas/builder.py to build the McStas instrument from them). The dataclasses have no defaults of
-their own. Every value left as null is calculated in `__post_init__` (a component derives what
-depends only on itself, `DiffractometerConfig` what spans components), so a config is always
-fully resolved.
+Pure entities, no file, YAML or McStas knowledge (see file_io/loader.py to load them and
+mcstas/builder.py to build the McStas instrument from them). A kind of instrument subclasses
+`Instrument` and builds its components, in order, in `from_dict` (see diffractometer.py).
 """
 
-import math
-from dataclasses import dataclass, fields
+from dataclasses import asdict, dataclass, fields
+from pathlib import Path
 from typing import ClassVar
 
+from align_crystal.instrument.components import Component
 
-@dataclass(kw_only=True)
-class Component:
-    """One piece of the instrument. Its role is its key in the config; `name` optionally gives it
-    a different instance name (default: the role)."""
-
-    component_name: str  # kind of component, e.g. "Slit"
-    name: str | None = None
-    OPTIONAL: ClassVar[tuple] = ("name",)  # fields that may stay None
+PLACEMENT = ("at", "rotated", "relative")  # the fields of a component that say where it sits
 
 
 @dataclass(kw_only=True)
-class Source(Component):
-    energy_meV: float
-    wavelength: float | None  # angstrom, monochromatic; None = derive from energy_meV
-    radius: float  # m
-    dist: float | None  # source -> focus plane, m; None = sample_pos distance
-    flux: float
+class Instrument:
+    """All the components of an instrument, keyed by role, in the order they are built (each one
+    knows where it sits). A component is also reachable as an attribute: `inst.source` is
+    `inst.components["source"]`.
+
+    A subclass sets the class attribute `PARAMS_FILE` (YAML with the default value of every
+    parameter) and implements `from_dict`. Nulls that depend on several components are derived in
+    the subclass's `__post_init__`, which must end with `super().__post_init__()`.
+    """
+
+    name: str
+    components: dict[str, Component]
+
+    PARAMS_FILE: ClassVar[Path | None] = None
 
     def __post_init__(self):
-        if self.wavelength is None:
-            self.wavelength = math.sqrt(81.80421 / self.energy_meV)  # lambda[A]=sqrt(81.804/E[meV])
+        """Raise if a value that is not optional is still null, i.e. could not be derived."""
+        for role, c in self.components.items():
+            for f in fields(c):
+                if getattr(c, f.name) is None and f.name not in c.OPTIONAL:
+                    raise ValueError(f"Config value {role}.{f.name} is unresolved (null)")
 
+    def __getattr__(self, role):
+        try:
+            return self.__dict__["components"][role]
+        except KeyError:
+            raise AttributeError(role) from None
 
-@dataclass(kw_only=True)
-class Slit(Component):
-    size: float  # opening and source focus (x and y), m
+    @classmethod
+    def from_dict(cls, data):
+        """Build the instrument from a complete nested dict: `name`, one section per component
+        with its parameters, and `placements` with the `at`, `rotated` and `relative` of each.
+        A subclass creates its components here, one after the other."""
+        raise NotImplementedError
 
-
-@dataclass(kw_only=True)
-class GonioArm(Component):
-    angle: float  # deg, initial value of the rotation about this arm's axis
-
-
-@dataclass(kw_only=True)
-class Crystal(Component):
-    size: float  # cube edge, m
-    order: int  # 1 = single scattering only
-
-
-@dataclass(kw_only=True)
-class Detector(Component):
-    radius: float  # m
-    height: float  # m
-    two_theta_range: list  # deg, signed: negative = right of the beam
-    n_theta: int
-    n_y: int
-
-
-@dataclass(kw_only=True)
-class Placement:
-    """Where a component sits: `at` (m) and `rotated` (deg, numbers or parameter names), both
-    relative to the component with role `relative` (None = absolute)."""
-
-    at: list
-    rotated: list | None
-    relative: str | None
-    OPTIONAL: ClassVar[tuple] = ("rotated", "relative")
-
-
-@dataclass(kw_only=True)
-class DiffractometerConfig:
-    name: str  # instrument name
-    origin: Component
-    source: Source
-    slit1: Slit
-    incident_monitor: Component
-    sample_pos: Component
-    gonio_omega: GonioArm
-    gonio_chi: GonioArm
-    gonio_phi: GonioArm
-    crystal: Crystal
-    detector: Detector
-    placements: dict  # role -> Placement
-
-    def __post_init__(self):
-        if self.source.dist is None:
-            self.source.dist = self.placements["sample_pos"].at[2]
-        _check_resolved(self)  # raise if a null could not be derived
-
-
-def _check_resolved(obj, path=""):
-    for f in fields(obj):
-        value = getattr(obj, f.name)
-        if isinstance(value, dict):  # placements
-            for k, v in value.items():
-                _check_resolved(v, f"{path}{f.name}.{k}.")
-        elif hasattr(value, "__dataclass_fields__"):
-            _check_resolved(value, f"{path}{f.name}.")
-        elif value is None and f.name not in getattr(obj, "OPTIONAL", ()):
-            raise ValueError(f"Config value {path}{f.name} is unresolved (null)")
+    def to_dict(self):
+        """The inverse of `from_dict`. Unset optional values of a component (its `name`, a static
+        arm's `angle`) are left out."""
+        placed = {role: asdict(c) for role, c in self.components.items()}
+        return {
+            "name": self.name,
+            **{
+                role: {k: v for k, v in d.items() if k not in PLACEMENT and v is not None}
+                for role, d in placed.items()
+            },
+            "placements": {role: {k: d[k] for k in PLACEMENT} for role, d in placed.items()},
+        }

@@ -1,15 +1,13 @@
 # Default diffractometer configuration. Your own config file only needs the keys it changes
-# (see load_config); null means "derive it" (see resolve) or "not applicable".
+# (see file_io/loader.py: load_config); null means "derive it" (see __post_init__ of the components and of Diffractometer) or "not applicable".
 name: align_crystal_diffractometer   # McStas instrument name
 
-# One section per McStas component; the key is its instance name in McStas and the role the
-# code refers to it by. `component_name` is the McStas component, the rest its parameters. Add
-# `name: other` to give it a different McStas instance name than its key.
-origin:
-  component_name: Progress_bar
+# One section per McStas component (its class in components.py is named after it); the key is
+# its instance name in McStas and the role the code refers to it by, the rest its parameters.
+# Add `name: other` to give it a different McStas instance name than its key.
+origin: {}
 
 source:
-  component_name: Source_simple
   energy_meV: 14
   wavelength: null     # angstrom, monochromatic; null = derive from energy_meV
   radius: 0.03         # m
@@ -17,34 +15,26 @@ source:
   flux: 1.0e10
 
 slit1:
-  component_name: Slit
   size: 0.01           # opening and source focus (x and y), m
 
-incident_monitor:      # integrated incident intensity; the neutrons carry on
-  component_name: Monitor
+incident_monitor: {}   # integrated incident intensity; the neutrons carry on
 
-sample_pos:            # the beam hits the goniometer centre; the beam can be dumped here
-  component_name: Arm
+sample_pos: {}         # the beam hits the goniometer centre; the beam can be dumped here
 
 # Goniometer arms, outermost first. `angle` (deg) is the initial value of the McStas parameter
 # named after the arm without "gonio_" (omega, chi, phi), so it can be scanned.
 gonio_omega:
-  component_name: Arm
   angle: 0.0           # rotation about +Y
 gonio_chi:
-  component_name: Arm
   angle: 0.0           # rotation about -Z
 gonio_phi:
-  component_name: Arm
   angle: 0.0           # rotation about +X
 
 crystal:
-  component_name: Single_crystal
   size: 0.005          # cube edge, m
   order: 1             # single scattering only (no multiple scattering): much faster
 
 detector:              # cylindrical ("banana") detector around the vertical axis through the sample
-  component_name: Monitor_nD
   radius: 1.0          # m
   height: 0.5          # m
   two_theta_range: [-125.0, -5.0]   # deg, signed: negative = right of the beam

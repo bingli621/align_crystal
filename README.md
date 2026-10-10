@@ -10,10 +10,12 @@ tools to read the McStas NeXus output (McStasToX, scippneutron) and convert to m
 
 ```
 src/align_crystal/
-  instrument/   the instrument as a configuration (no McStas knowledge)
-    instrument.py     one dataclass per component, values left null are derived on load
-    loader.py         load_config / save_config
-    params.yaml       all default values
+  instrument/   instruments as configurations (no McStas knowledge)
+    components.py     the kinds of component, one dataclass each (named after the McStas component: Source_simple, Slit, Single_crystal, Monitor_nD, ...)
+    instrument.py     Instrument: the components of an instrument, each recording its placement (any set of components)
+    diffractometer.py Diffractometer(Instrument): its components, derivations and defaults
+    params.yaml       all default values of the diffractometer
+  file_io/      loader.py: load_config / save_config, an Instrument from/to YAML
   mcstas/       everything that talks to McStas
     builder.py        builds the McStasScript instrument from a config (goniometer: omega Y, chi -Z, phi X)
     simulater.py      run, dump_beam, run_from_beam (also runnable as a script)
@@ -25,12 +27,15 @@ tests/
 mcstas_output/  generated McStas files and simulation results (git-ignored)
 ```
 
-Dependencies point inwards: `mcstas` and `reduction` use `instrument` and `samples`, never the other way round.
+A different instrument is a new subclass of `Instrument` (its components, defaults file and
+derivations, like `Diffractometer`), loaded with `load_config(..., cls=MyInstrument)`.
+
+Dependencies point inwards: `file_io`, `mcstas` and `reduction` use `instrument` and `samples`, never the other way round.
 
 ## Configuration
 
-`instrument/params.yaml` holds every default: one section per McStas component (`component_name`,
-its parameters) plus `placements` (`at`, `rotated`, `relative` of each component). Your own YAML
+`instrument/params.yaml` holds every default of the diffractometer: one section per McStas component
+(its parameters) plus `placements` (`at`, `rotated`, `relative` of each component, which each component keeps). Your own YAML
 lists only what changes; unknown keys are rejected, and `null` values are derived (the
 wavelength from `energy_meV`, the source focus distance from the sample position).
 
@@ -49,7 +54,7 @@ placements:
 ```
 
 ```python
-from align_crystal.instrument import load_config
+from align_crystal.file_io import load_config
 from align_crystal.mcstas.simulater import run
 
 cfg = load_config("my_config.yaml")                 # also takes a dict of overrides, or nothing

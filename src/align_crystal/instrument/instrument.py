@@ -1,6 +1,6 @@
 """Domain model of the diffractometer: one dataclass per component.
 
-Pure entities, no file, YAML or McStas knowledge (see config_yaml.py to load them and
+Pure entities, no file, YAML or McStas knowledge (see loader.py to load them and
 mcstas/builder.py to build the McStas instrument from them). The dataclasses have no defaults of
 their own. Every value left as null is calculated in `__post_init__` (a component derives what
 depends only on itself, `DiffractometerConfig` what spans components), so a config is always

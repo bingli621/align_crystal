@@ -12,7 +12,7 @@ tools to read the McStas NeXus output (McStasToX, scippneutron) and convert to m
 src/align_crystal/
   instrument/   the instrument as a configuration (no McStas knowledge)
     instrument.py     one dataclass per component, values left null are derived on load
-    config_yaml.py    load_config / save_config
+    loader.py         load_config / save_config
     params.yaml       all default values
   mcstas/       everything that talks to McStas
     builder.py        builds the McStasScript instrument from a config (goniometer: omega Y, chi -Z, phi X)

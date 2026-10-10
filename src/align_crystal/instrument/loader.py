@@ -7,7 +7,11 @@ from typing import get_type_hints
 
 import yaml
 
-from align_crystal.instrument.instrument import Component, DiffractometerConfig, Placement
+from align_crystal.instrument.instrument import (
+    Component,
+    DiffractometerConfig,
+    Placement,
+)
 
 DEFAULT_CONFIG_PATH = Path(__file__).parent / "params.yaml"
 
@@ -35,7 +39,9 @@ def from_dict(data):
     """Build a DiffractometerConfig from a complete nested dict."""
     kwargs = {"name": data["name"]}
     for role, cls in get_type_hints(DiffractometerConfig).items():
-        if issubclass(cls, Component):  # every component section, typed by its annotation
+        if issubclass(
+            cls, Component
+        ):  # every component section, typed by its annotation
             kwargs[role] = cls(**data[role])
     kwargs["placements"] = {r: Placement(**p) for r, p in data["placements"].items()}
     return DiffractometerConfig(**kwargs)
@@ -46,7 +52,9 @@ def load_config(source=None):
     A DiffractometerConfig is returned as is."""
     if isinstance(source, DiffractometerConfig):
         return source
-    overrides = source if isinstance(source, dict) else _read_yaml(source) if source else {}
+    overrides = (
+        source if isinstance(source, dict) else _read_yaml(source) if source else {}
+    )
     return from_dict(_merge(_read_yaml(DEFAULT_CONFIG_PATH), overrides))
 
 

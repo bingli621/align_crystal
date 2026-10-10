@@ -3,7 +3,7 @@
 In VS Code: run this file, or from a notebook/Interactive Window:
 
     from plot_scan_2d import plot_scan_2d
-    plot_scan_2d("work/latest", scan_par="omega", out="output/scan.gif")
+    plot_scan_2d("mcstas_output/latest", scan_par="omega", out="output/scan.gif")
 """
 
 from pathlib import Path
@@ -13,13 +13,13 @@ import numpy as np
 from matplotlib.animation import FuncAnimation, PillowWriter
 from matplotlib.colors import LogNorm
 
-from align_crystal.io import read_scan
+from align_crystal.mcstas.h5_reader import read_scan
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def plot_scan_2d(
-    folder=ROOT / "work" / "latest",
+    folder=ROOT / "mcstas_output" / "latest",
     scan_par="omega",
     out=ROOT / "output" / "scan.gif",
     bins=(1200, 50),

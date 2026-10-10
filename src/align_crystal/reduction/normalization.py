@@ -6,8 +6,8 @@ import mcstastox
 import numpy as np
 import scipp as sc
 
-from align_crystal.io import numeric_parameters
-from align_crystal.solid_angle import rectangle_solid_angle
+from align_crystal.mcstas.h5_reader import numeric_parameters
+from align_crystal.reduction.solid_angle import rectangle_solid_angle
 
 
 def detector_solid_angle(folder, component="detector", sample="sample_pos", geometry="cylinder"):
@@ -62,7 +62,7 @@ def normalize_scan(
 
     The monitor is read from every scan entry of `folder`, unless `monitor_file` is given: for
     data simulated from a beam dump (`run_from_beam`) the monitor and the source are only in the
-    file of the beam run (`dump_beam`, `work/beam/mccode.h5`). That one monitor reading then
+    file of the beam run (`dump_beam`, `mcstas_output/beam/mccode.h5`). That one monitor reading then
     normalizes all angles, and the source position is rebuilt from the beam file (source ->
     sample vector) so that the incident beam direction is known.
 

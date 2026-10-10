@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from align_crystal.solid_angle import rectangle_solid_angle
+from align_crystal.reduction.solid_angle import rectangle_solid_angle
 
 
 def test_cube_face_is_one_sixth_of_sphere():

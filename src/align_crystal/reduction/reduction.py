@@ -1,6 +1,6 @@
 """Data reduction: momentum transfer in the lab and sample frames.
 
-Works on the pixel DataArrays returned by `align_crystal.io.read_scan`.
+Works on the pixel DataArrays returned by `align_crystal.mcstas.h5_reader.read_scan`.
 """
 
 import numpy as np

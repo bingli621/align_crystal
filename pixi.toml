@@ -15,6 +15,7 @@ pytest = ">=9.1.1,<10"
 scippneutron = ">=26.9.1,<27"
 matplotlib = ">=3.11.2,<4"
 pytest-cov = ">=7.1.0,<8"
+pyyaml = ">=6,<7"
 
 [pypi-dependencies]
 align_crystal = { path = ".", editable = true }

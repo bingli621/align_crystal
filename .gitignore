@@ -2,7 +2,7 @@
 __pycache__/
 *.egg-info/
 dist/
-work/
+mcstas_output/
 .pytest_cache/
 .DS_Store
 coverage.xml

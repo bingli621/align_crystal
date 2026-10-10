@@ -8,20 +8,17 @@ tools to read the McStas NeXus output (McStasToX, scippneutron) and convert to m
 
 ## Layout
 
-- `src/align_crystal/instrument.py` – the McStasScript instrument; goniometer: omega (Y), chi (-Z), phi (X).
-- `src/align_crystal/samples.py` – crystals and their orientation (`la2ni7()`, `aluminium()`).
-- `src/align_crystal/simulate.py` – `run(...)`, also runnable as a script; supports mcrun scans
-  (`omega="-48,73"`, `custom_flags="-N 122"`). McStas-generated files go to `work/`.
-- `src/align_crystal/io.py` – `read_scan` (mcstastox).
-- `src/align_crystal/reduction.py` – `to_Q` (lab-frame Q), `to_sample_frame`.
-- `src/align_crystal/normalization.py` – `detector_solid_angle` (pixel solid angles; the math is in `solid_angle.py`).
-- `src/align_crystal/peaks.py` – `find_peaks`: peak list in the sample-frame Q space (centre of mass, propagated errors).
+- `src/align_crystal/instrument/` – the instrument as dataclasses, one per component (`instrument.py`, no McStas knowledge), `config_yaml.py` to load/save a config, and `params.yaml` with all defaults (your file lists only the changes).
+- `src/align_crystal/mcstas/` – everything that talks to McStas: `builder.py` (the McStasScript adapter: builds the instrument from a config; goniometer: omega (Y), chi (-Z), phi (X); `OUTPUT_DIR`), `simulater.py` (`run(...)`, also runnable as a script; supports mcrun scans
+  (`omega="-48,73"`, `custom_flags="-N 122"`). McStas-generated files go to `mcstas_output/`) and `h5_reader.py` (`read_scan` of the NeXus output, mcstastox).
+- `src/align_crystal/samples/` – `sample.py` (`Sample`, `oriented_sample`) and one folder per sample (`aluminium/`, `la2ni7/` with its CIF); `la2ni7()`, `aluminium()` are importable from `align_crystal.samples`.
+- `src/align_crystal/reduction/` – `reduction.py` (`to_Q` lab-frame Q, `to_sample_frame`), `normalization.py` (`detector_solid_angle`, `normalize_scan`), `solid_angle.py` (the solid-angle math) and `peaks.py` (`find_peaks`: peak list in the sample-frame Q space, centre of mass, propagated errors); all re-exported from `align_crystal.reduction`.
 - `scripts/plot_scan_2d.py`, `scripts/plot_scan_Q.py` – gifs of the detector and of (Qx, Qz) in the sample frame.
 
 ## Use
 
 ```bash
-pixi run python src/align_crystal/simulate.py        # writes work/latest/mccode.h5
+pixi run python src/align_crystal/mcstas/simulater.py # writes mcstas_output/latest/mccode.h5
 pixi run python scripts/plot_scan_2d.py      # output/scan.gif
 pixi run python scripts/plot_scan_Q.py       # output/scan_Q.gif
 pixi run pytest --cov=align_crystal --cov-report=term-missing   # tests + coverage

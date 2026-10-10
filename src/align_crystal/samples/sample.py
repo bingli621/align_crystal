@@ -1,14 +1,12 @@
-"""Single-crystal sample definitions with their orientation in the lab frame.
+"""What every sample has in common: the `Sample` and how to orient a crystal in the lab frame.
 
 Lab frame (McStas): z along the beam, y up, x to the left of the beam.
+The individual samples live in their own folders (aluminium/, la2ni7/, ...).
 """
 
 from dataclasses import dataclass
-from pathlib import Path
 
 import numpy as np
-
-DATA_DIR = Path(__file__).parent / "data"
 
 
 @dataclass
@@ -47,21 +45,3 @@ def oriented_sample(cell, reflections, along_beam, in_plane, mosaic=5.0):
     R = np.array([x, y, z])  # crystal Cartesian -> lab
     astar, bstar, cstar = (tuple(R @ B[:, i]) for i in range(3))
     return Sample(str(reflections), astar, bstar, cstar, mosaic)
-
-
-def aluminium(mosaic=5.0):
-    """fcc Al, cubic axes along the lab axes."""
-    return oriented_sample(
-        (4.0495,) * 3 + (90,) * 3, "Al.lau", (0, 0, 1), (1, 0, 0), mosaic
-    )
-
-
-def la2ni7(mosaic=30.0):
-    """La2Ni7 (P6_3/mmc): (001) along the beam, (1.357, 1, 0) in the horizontal plane to the left."""
-    return oriented_sample(
-        (5.0556, 5.0556, 24.5980, 90, 90, 120),
-        DATA_DIR / "La2Ni7.cif",
-        (0, 0, 1),
-        (1.357, 1, 0),
-        mosaic,
-    )

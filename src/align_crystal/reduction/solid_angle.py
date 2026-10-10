@@ -16,7 +16,9 @@ def pixel_normal(position, geometry="cylinder"):
         return position * np.array([1.0, 0.0, 1.0])
     if geometry == "sphere":
         return position.copy()
-    raise ValueError(f"Detector geometry {geometry!r} is not recognised (cylinder or sphere).")
+    raise ValueError(
+        f"Detector geometry {geometry!r} is not recognised (cylinder or sphere)."
+    )
 
 
 def _triangle(a, b, c):
@@ -42,5 +44,10 @@ def rectangle_solid_angle(position, width, height, geometry="cylinder"):
 
     hw = horiz * (np.asarray(width, float) / 2).reshape(-1, 1)
     hh = vert * (np.asarray(height, float) / 2).reshape(-1, 1)
-    s1, s2, s3, s4 = (position - hw + hh, position + hw + hh, position + hw - hh, position - hw - hh)
+    s1, s2, s3, s4 = (
+        position - hw + hh,
+        position + hw + hh,
+        position + hw - hh,
+        position - hw - hh,
+    )
     return _triangle(s1, s2, s3) + _triangle(s1, s3, s4)  # rectangle = two triangles

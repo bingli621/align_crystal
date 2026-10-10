@@ -6,7 +6,7 @@ goniometer rotation, so the reciprocal lattice stays fixed while omega changes.
 In VS Code: run this file, or from a notebook/Interactive Window:
 
     from plot_scan_Q import plot_scan_Q
-    plot_scan_Q("work/latest", scan_par="omega", out="output/scan_Q.gif")
+    plot_scan_Q("mcstas_output/latest", scan_par="omega", out="output/scan_Q.gif")
 """
 
 from pathlib import Path
@@ -17,15 +17,14 @@ import scipp as sc
 from matplotlib.animation import FuncAnimation, PillowWriter
 from matplotlib.colors import LogNorm
 
-from align_crystal.io import read_scan
-from align_crystal.normalization import normalize_scan
-from align_crystal.reduction import to_Q, to_sample_frame
+from align_crystal.mcstas.h5_reader import read_scan
+from align_crystal.reduction import normalize_scan, to_Q, to_sample_frame
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def plot_scan_Q(
-    folder=ROOT / "work" / "latest",
+    folder=ROOT / "mcstas_output" / "latest",
     scan_par="omega",
     out=ROOT / "output" / "scan_Q.gif",
     bins=(200, 200),
@@ -39,7 +38,7 @@ def plot_scan_Q(
 
     With `normalize`, the intensities are divided by the incident monitor and the pixel solid
     angle (see `normalize_scan`), in 1/sr. For data from `run_from_beam` give the beam run's
-    `monitor_file` (`work/beam/mccode.h5`).
+    `monitor_file` (`mcstas_output/beam/mccode.h5`).
 
     With `accumulate`, frame i shows the sum of all scan points up to i (previous frames are kept).
     """
@@ -103,8 +102,8 @@ def plot_scan_Q(
 if __name__ == "__main__":
     # normalized (Qx, Qz) map of a run_from_beam scan, using the monitor of the beam run
     plot_scan_Q(
-        folder=ROOT / "work" / "split",
+        folder=ROOT / "mcstas_output" / "split",
         out=ROOT / "output" / "scan_Q_normalized.gif",
         normalize=True,
-        monitor_file=ROOT / "work" / "beam" / "mccode.h5",
+        monitor_file=ROOT / "mcstas_output" / "beam" / "mccode.h5",
     )

@@ -4,7 +4,7 @@ save it to a text file.
 In VS Code: run this file, or from a notebook/Interactive Window:
 
     from print_peaks import print_peaks, save_peaks
-    peaks = print_peaks("work/latest")
+    peaks = print_peaks("mcstas_output/latest")
     save_peaks(peaks, "output/peaks.txt")
 """
 
@@ -13,7 +13,7 @@ from pathlib import Path
 
 import numpy as np
 
-from align_crystal.peaks import find_peaks
+from align_crystal.reduction import find_peaks
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -39,7 +39,7 @@ def save_peaks(peaks, out=ROOT / "output" / "peaks.txt"):
     return out
 
 
-def print_peaks(folder=ROOT / "work" / "latest", **kwargs):
+def print_peaks(folder=ROOT / "mcstas_output" / "latest", **kwargs):
     """Print the peaks of a scan, smallest |Q| first. `kwargs` go to `find_peaks`.
     Returns the list of peaks (use `save_peaks` to write them to a file)."""
     peaks = sorted(find_peaks(folder, **kwargs), key=lambda p: np.linalg.norm(p.q))

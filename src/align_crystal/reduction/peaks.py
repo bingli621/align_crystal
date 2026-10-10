@@ -14,8 +14,8 @@ import scipp as sc
 from scipy import ndimage
 from scipy.spatial import cKDTree
 
-from align_crystal.normalization import normalize_scan
-from align_crystal.reduction import to_Q, to_sample_frame
+from align_crystal.reduction.normalization import normalize_scan
+from align_crystal.reduction.reduction import to_Q, to_sample_frame
 
 
 @dataclass

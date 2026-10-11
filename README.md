@@ -1,7 +1,6 @@
 # align_crystal
 
 [![CI](https://github.com/bingli621/align_crystal/actions/workflows/ci.yml/badge.svg)](https://github.com/bingli621/align_crystal/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/bingli621/align_crystal/branch/main/graph/badge.svg)](https://codecov.io/gh/bingli621/align_crystal)
 
 Single-crystal diffractometer simulation (McStasScript) with a three-axis goniometer, and
 tools to read the McStas NeXus output (McStasToX, scippneutron) and convert to momentum transfer.

@@ -8,18 +8,24 @@ from typing import ClassVar
 class Component:
     """One piece of the instrument. A subclass is named after the McStas component it stands for
     (Slit, Single_crystal, ...), so `type(component).__name__` is the McStas component.
-    Its role is its key in the config; `name` optionally gives it a different McStas instance
-    name (default: the role).
+    Its `name` is its McStas instance name; its key in the instrument is its role, the one that
+    `relative` refers to. If the name is not given it is the role (`Instrument.from_params` and
+    a `Param` both do that). A component fills in, in its `__post_init__`, the values that follow from its own;
+    the rest is left to the instrument. It knows nothing of the file it came from.
 
     It also records where it sits, as McStas AT and ROTATED: `at` (m) and `rotated` (deg, numbers
     or parameter names), both relative to the component with role `relative` (None = absolute).
     """
 
     at: list
-    rotated: list | None
-    relative: str | None
+    rotated: list | None = None
+    relative: str | None = None
     name: str | None = None
-    OPTIONAL: ClassVar[tuple] = ("name", "rotated", "relative")  # fields that may stay None
+    OPTIONAL: ClassVar[tuple] = (
+        "name",
+        "rotated",
+        "relative",
+    )  # fields that may stay None
 
 
 @dataclass(kw_only=True)

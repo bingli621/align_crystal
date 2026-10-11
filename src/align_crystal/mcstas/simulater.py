@@ -9,8 +9,16 @@ import h5py
 import numpy as np
 from mcstasscript.helper.managed_mcrun import ManagedMcrun
 
-from align_crystal.file_io import load_config
+from align_crystal.core import Instrument
 from align_crystal.mcstas.builder import OUTPUT_DIR, build_instrument
+
+
+def _instrument(config):
+    """The instrument to simulate: `config` must be an `Instrument` (see the `instruments/` folder
+    of the repository, e.g. `SingleCrystalDiffractometer.from_file()`)."""
+    if not isinstance(config, Instrument):
+        raise ValueError(f"config must be an Instrument, not {config!r}")
+    return config
 
 
 def _run_scan(inst, scans):
@@ -34,12 +42,12 @@ def run(
     custom_flags=None,
     **angles,
 ):
-    """Run a simulation; `config` is anything `load_config` takes (default: the default config).
+    """Run a simulation; `config` is the `Instrument` to simulate.
     `angles` may contain omega, chi, phi (deg). Output goes to
     `output_path/mccode.h5`. `custom_flags` is passed to mcrun; with "-N 3" a
     parameter given as "min,max" (e.g. omega="3,5") is scanned over 3 points."""
     shutil.rmtree(output_path, ignore_errors=True)  # always start from a clean folder
-    inst = build_instrument(load_config(config), sample=sample)
+    inst = build_instrument(_instrument(config), sample=sample)
     inst.settings(
         output_path=str(output_path),
         ncount=ncount,
@@ -74,7 +82,7 @@ def dump_beam(output_path=OUTPUT_DIR / "beam", ncount=1e8, mpi="auto", config=No
     output_path.parent.mkdir(
         parents=True, exist_ok=True
     )  # mcrun does not create parent folders
-    inst = build_instrument(load_config(config))
+    inst = build_instrument(_instrument(config))
     inst.settings(
         output_path=str(output_path),
         ncount=ncount,
@@ -128,7 +136,7 @@ def run_from_beam(
         else seed
     )
 
-    inst = build_instrument(load_config(config), sample=sample)
+    inst = build_instrument(_instrument(config), sample=sample)
     inst.run_from("sample_pos", filename=f'"{beam_file}"')
     inst.settings(
         output_path=str(output_path),
@@ -173,12 +181,19 @@ def run_from_beam(
 
 if __name__ == "__main__":
     # Edit the settings below and run this file (e.g. with VS Code's ▶ button).
+    import sys
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[3]))  # the repository root: instruments/
+    from instruments import SingleCrystalDiffractometer
+
     from align_crystal.samples import la2ni7
 
+    diffractometer = SingleCrystalDiffractometer.from_file()
     MODE = "from_beam"  # "full": one run | "dump": split part 1 | "from_beam": split part 2
 
     if MODE == "full":
         h5_file = run(
+            config=diffractometer,
             ncount=1e6,
             sample=la2ni7(mosaic=60),
             omega="-48,73",  # scan omega
@@ -188,9 +203,13 @@ if __name__ == "__main__":
         )
         print(f"Wrote {h5_file}")
     elif MODE == "dump":
-        print(f"Wrote {dump_beam(ncount=1e8)}")
+        print(f"Wrote {dump_beam(ncount=1e8, config=diffractometer)}")
     elif MODE == "from_beam":
         h5_file = run_from_beam(
-            omegas=range(-48, 74), sample=la2ni7(mosaic=60), chi=-5.893, phi=0.0
+            omegas=range(-48, 74),
+            sample=la2ni7(mosaic=60),
+            config=diffractometer,
+            chi=-5.893,
+            phi=0.0,
         )
         print(f"Wrote {h5_file}")

@@ -15,3 +15,4 @@ packages = ["src/align_crystal"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]  # the repository root, for the instruments/ folder

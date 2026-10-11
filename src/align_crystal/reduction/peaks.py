@@ -51,8 +51,14 @@ def load_points(folder, **kwargs):
         sq = sc.DataArray(c["data"].data * c["data"].data, coords=c["data"].coords)
         sq_per_pixel = sc.bins(begin=c["begin"], dim=c["dim"], data=sq).bins.sum()
         pixels = events.bins.sum()
-        qs = to_sample_frame(to_Q(pixels, sc.scalar(params["wavelength"], unit="angstrom")), params)
-        q.append(np.stack([qs.coords[f"{a}_sample"].values for a in ("Qx", "Qy", "Qz")], axis=1))
+        qs = to_sample_frame(
+            to_Q(pixels, sc.scalar(params["wavelength"], unit="angstrom")), params
+        )
+        q.append(
+            np.stack(
+                [qs.coords[f"{a}_sample"].values for a in ("Qx", "Qy", "Qz")], axis=1
+            )
+        )
         w.append(pixels.values)
         var.append(sq_per_pixel.values)
         idx.append(np.full(len(w[-1]), k))

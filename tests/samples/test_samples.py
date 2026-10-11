@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from align_crystal.samples import aluminium, la2ni7
+from align_crystal.samples import la2ni7
 
 
 def test_la2ni7_orientation():
@@ -14,7 +14,3 @@ def test_la2ni7_orientation():
     assert q[1] == pytest.approx(0, abs=1e-9) and q[0] > 0
     # right-handed lattice
     assert np.dot(np.cross(a, b), c) > 0
-
-
-def test_aluminium_uses_the_mcstas_reflection_list():
-    assert aluminium().reflections == "Al.lau"

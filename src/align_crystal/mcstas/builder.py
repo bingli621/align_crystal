@@ -14,7 +14,7 @@ from pathlib import Path
 
 from mcstasscript.interface import instr
 
-from align_crystal.instrument.components import (
+from align_crystal.core.components import (
     Monitor,
     Monitor_nD,
     Single_crystal,
@@ -54,7 +54,9 @@ def _place(inst, cfg, role):
     at/rotated/relative."""
     c = getattr(cfg, role)
     rel = _name(cfg, c.relative) if c.relative else None
-    comp = inst.add_component(_name(cfg, role), type(c).__name__, RELATIVE=rel or "ABSOLUTE")
+    comp = inst.add_component(
+        _name(cfg, role), type(c).__name__, RELATIVE=rel or "ABSOLUTE"
+    )
     kw = {"RELATIVE": rel} if rel else {}
     comp.set_AT(list(c.at), **kw)
     if c.rotated is not None:
@@ -123,12 +125,17 @@ _CONFIGURE = {
 
 def build_instrument(config, sample=None, input_path=OUTPUT_DIR):
     """Return a McStasScript instrument with the components of `config` (an Instrument, see
-    file_io.load_config) added in their order."""
+    `Instrument`) added in their order."""
     sample = sample or aluminium()
     Path(input_path).mkdir(parents=True, exist_ok=True)
     inst = instr.McStas_instr(config.name, input_path=str(input_path))
     _add_instrument_parameters(inst, config)
-    for role, c in config.components.items():  # in order: McStas positions are relative to earlier ones
+    for (
+        role,
+        c,
+    ) in (
+        config.components.items()
+    ):  # in order: McStas positions are relative to earlier ones
         comp = _place(inst, config, role)
         if type(c) in _CONFIGURE:
             _CONFIGURE[type(c)](comp, c, config, sample)
@@ -136,9 +143,12 @@ def build_instrument(config, sample=None, input_path=OUTPUT_DIR):
 
 
 if __name__ == "__main__":
-    from align_crystal.file_io import load_config
+    import sys
 
-    inst = build_instrument(load_config())
+    sys.path.insert(0, str(Path(__file__).resolve().parents[3]))  # the repository root: instruments/
+    from instruments import SingleCrystalDiffractometer
+
+    inst = build_instrument(SingleCrystalDiffractometer.from_file())
     inst.show_parameters()
     inst.show_components()
     inst.show_diagram()

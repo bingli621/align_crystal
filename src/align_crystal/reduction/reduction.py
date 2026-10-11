@@ -61,5 +61,7 @@ def to_sample_frame(events, params):
     q_sample = R.T @ q_lab  # rotation matrices: inverse = transpose
     events = events.copy(deep=False)
     for name, values in zip(("Qx_sample", "Qy_sample", "Qz_sample"), q_sample):
-        events.coords[name] = sc.array(dims=events.dims, values=values, unit="1/angstrom")
+        events.coords[name] = sc.array(
+            dims=events.dims, values=values, unit="1/angstrom"
+        )
     return events

@@ -10,7 +10,9 @@ from ..mcstas.h5_reader import numeric_parameters
 from .solid_angle import rectangle_solid_angle
 
 
-def detector_solid_angle(folder, component="detector", sample="sample_pos", geometry="cylinder"):
+def detector_solid_angle(
+    folder, component="detector", sample="sample_pos", geometry="cylinder"
+):
     """Solid angle [sr] of every pixel of a banana (theta, y) detector, as a scipp DataArray over
     'pixel_id' with the pixel `position` coordinate. Includes pixels that received no neutrons.
 
@@ -79,7 +81,9 @@ def normalize_scan(
     beam_incident = beam_source_to_sample = None
     if monitor_file is not None:
         monitor_file = Path(monitor_file)
-        with mcstastox.Read(str(monitor_file.parent), filename=monitor_file.name) as beam:
+        with mcstastox.Read(
+            str(monitor_file.parent), filename=monitor_file.name
+        ) as beam:
             beam_incident = incident_intensity(beam, monitor)
             beam_source_to_sample = beam.get_global_component_coordinates(
                 f"MCPL_{sample}"
@@ -90,13 +94,18 @@ def normalize_scan(
         with mcstastox.Read(str(folder), entry_number=entry) as data:
             params = numeric_parameters(data.get_instrument_parameters())
             if monitor_file is None:
-                events = data.export_scipp(source, sample, component_name=component)["events"]
+                events = data.export_scipp(source, sample, component_name=component)[
+                    "events"
+                ]
                 incident = incident_intensity(data, monitor)
             else:
                 # the source is not in the file: use the sample as a stand-in and fix it below
-                events = data.export_scipp(sample, sample, component_name=component)["events"]
+                events = data.export_scipp(sample, sample, component_name=component)[
+                    "events"
+                ]
                 events.coords["source_position"] = sc.vector(
-                    events.coords["sample_position"].value - beam_source_to_sample, unit="m"
+                    events.coords["sample_position"].value - beam_source_to_sample,
+                    unit="m",
                 )
                 incident = beam_incident
 

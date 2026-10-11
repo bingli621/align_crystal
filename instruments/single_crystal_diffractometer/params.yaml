@@ -1,18 +1,33 @@
-# Default diffractometer configuration. Your own config file only needs the keys it changes
-# (see file_io/loader.py: load_config); null means "derive it" (see __post_init__ of the components and of Diffractometer) or "not applicable".
+# Parameters of the diffractometer: everything in one complete file. To change something, copy
+# this file, edit it and load it (SingleCrystalDiffractometer.from_file). null means "calculate it": each
+# component does that itself (core/components/), or the instrument from the others (instruments/single_crystal_diffractometer/diffractometer.py).
 name: align_crystal_diffractometer   # McStas instrument name
 
-# One section per McStas component (its class in components/ is named after it); the key is
-# its instance name in McStas and the role the code refers to it by, the rest its parameters.
-# Add `name: other` to give it a different McStas instance name than its key.
+# The components in the order of the beam, each role with the McStas component it is (the class of
+# the same name in core/components/). The sections and placements below are keyed by these roles.
+components:
+  origin: Progress_bar
+  source: Source_simple
+  slit1: Slit
+  incident_monitor: Monitor
+  sample_pos: Arm
+  gonio_omega: Arm
+  gonio_chi: Arm
+  gonio_phi: Arm
+  crystal: Single_crystal
+  detector: Monitor_nD
+
+# One section per role: its parameters. The role is also the instance name in McStas.
+# Add `name: other` to a section to give it a different McStas instance name than its key.
 origin: {}
 
 source:
   energy_meV: 14
   wavelength: null     # angstrom, monochromatic; null = derive from energy_meV
   radius: 0.03         # m
-  dist: null           # source -> focus plane, m; null = sample_pos distance
-  flux: 1.0e10
+  focus_on: sample_pos # the component the source focuses on
+  dist: null           # source -> focus plane, m; null = z of focus_on
+  flux: 1.0e+10        # PyYAML needs the sign: 1.0e10 would load as a string
 
 slit1:
   size: 0.01           # opening and source focus (x and y), m

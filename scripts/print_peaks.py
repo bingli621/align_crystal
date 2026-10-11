@@ -20,7 +20,9 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def format_peaks(peaks):
     """The peak table as a list of text lines: Qx, Qy, Qz, |Q| [1/Å], Intensity, Errorbar [1/sr]."""
-    lines = [f"{'Qx':>9} {'Qy':>9} {'Qz':>9} {'|Q|':>9} {'Intensity':>12} {'Errorbar':>10}"]
+    lines = [
+        f"{'Qx':>9} {'Qy':>9} {'Qz':>9} {'|Q|':>9} {'Intensity':>12} {'Errorbar':>10}"
+    ]
     for p in peaks:
         qx, qy, qz = p.q
         q_abs = np.linalg.norm(p.q)

@@ -11,7 +11,8 @@ class Source_simple(Component):
     energy_meV: float
     wavelength: float | None  # angstrom, monochromatic; None = derive from energy_meV
     radius: float  # m
-    dist: float | None  # source -> focus plane, m; None = derived by the instrument
+    focus_on: str  # role of the component the source focuses on
+    dist: float | None  # source -> focus plane, m; None = z of `focus_on` in the source frame
     flux: float
 
     def __post_init__(self):

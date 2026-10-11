@@ -61,7 +61,13 @@ def plot_scan_Q(
     rng = [[qx_all.min(), qx_all.max()], [qz_all.min(), qz_all.max()]]
     # histogramming over (Qx, Qz) with weights sums the intensity over Qy
     hists = [
-        np.histogram2d(q.coords["Qx_sample"].values, q.coords["Qz_sample"].values, bins=bins, range=rng, weights=q.values)[0]
+        np.histogram2d(
+            q.coords["Qx_sample"].values,
+            q.coords["Qz_sample"].values,
+            bins=bins,
+            range=rng,
+            weights=q.values,
+        )[0]
         for q in qs
     ]
     if accumulate:
@@ -74,14 +80,25 @@ def plot_scan_Q(
 
     fig, ax = plt.subplots(figsize=(7, 6))
     mesh = ax.pcolormesh(
-        xe, ye, np.ma.masked_less_equal(hists[0].T, 0), cmap="jet", norm=LogNorm(vmin, vmax)
+        xe,
+        ye,
+        np.ma.masked_less_equal(hists[0].T, 0),
+        cmap="jet",
+        norm=LogNorm(vmin, vmax),
     )
-    fig.colorbar(mesh, label="normalized intensity summed over Qy (1/sr)" if normalize else "intensity summed over Qy (n/s)")
+    fig.colorbar(
+        mesh,
+        label="normalized intensity summed over Qy (1/sr)"
+        if normalize
+        else "intensity summed over Qy (n/s)",
+    )
     ax.set_xlabel("Qx sample (1/Å)")
     ax.set_ylabel("Qz sample (1/Å)")
     ax.set_aspect("equal")
     ax.grid(alpha=0.6)
-    ax.set_title(f"{scan_par} = {points[0][0][scan_par]:g}°")  # reserve room before tight_layout
+    ax.set_title(
+        f"{scan_par} = {points[0][0][scan_par]:g}°"
+    )  # reserve room before tight_layout
     fig.tight_layout()
 
     def draw(i):

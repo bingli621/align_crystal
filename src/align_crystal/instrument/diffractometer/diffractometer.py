@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import ClassVar
 
-from align_crystal.instrument.components import (
+from ..components import (
     Arm,
     Monitor,
     Monitor_nD,
@@ -16,7 +16,7 @@ from align_crystal.instrument.components import (
     Slit,
     Source_simple,
 )
-from align_crystal.instrument.instrument import Instrument
+from ..instrument import Instrument
 
 
 @dataclass(kw_only=True)

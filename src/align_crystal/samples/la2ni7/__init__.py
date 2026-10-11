@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from align_crystal.samples.sample import oriented_sample
+from ..sample import oriented_sample
 
 CIF = Path(__file__).parent / "La2Ni7.cif"
 

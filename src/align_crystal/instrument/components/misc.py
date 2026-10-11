@@ -1,12 +1,5 @@
-"""The building blocks of an instrument: one dataclass per kind of component.
+"""The base `Component` and the components that fit no other file: Progress_bar, Slit, Arm."""
 
-They carry no defaults of their own (see params.yaml) and know nothing about files or McStas.
-A value a component can calculate from its own other values is derived in `__post_init__` when
-it is null; what depends on other components is derived by the instrument in its own
-`__post_init__` (see diffractometer.py).
-"""
-
-import math
 from dataclasses import dataclass
 from typing import ClassVar
 
@@ -35,26 +28,8 @@ class Progress_bar(Component):
 
 
 @dataclass(kw_only=True)
-class Source_simple(Component):
-    energy_meV: float
-    wavelength: float | None  # angstrom, monochromatic; None = derive from energy_meV
-    radius: float  # m
-    dist: float | None  # source -> focus plane, m; None = derived by the instrument
-    flux: float
-
-    def __post_init__(self):
-        if self.wavelength is None:
-            self.wavelength = math.sqrt(81.80421 / self.energy_meV)  # lambda[A]=sqrt(81.804/E[meV])
-
-
-@dataclass(kw_only=True)
 class Slit(Component):
     size: float  # opening and source focus (x and y), m
-
-
-@dataclass(kw_only=True)
-class Monitor(Component):
-    pass
 
 
 @dataclass(kw_only=True)
@@ -64,18 +39,3 @@ class Arm(Component):
 
     angle: float | None = None
     OPTIONAL: ClassVar[tuple] = (*Component.OPTIONAL, "angle")
-
-
-@dataclass(kw_only=True)
-class Single_crystal(Component):
-    size: float  # cube edge, m
-    order: int  # 1 = single scattering only
-
-
-@dataclass(kw_only=True)
-class Monitor_nD(Component):
-    radius: float  # m
-    height: float  # m
-    two_theta_range: list  # deg, signed: negative = right of the beam
-    n_theta: int
-    n_y: int

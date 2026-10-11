@@ -6,8 +6,8 @@ import mcstastox
 import numpy as np
 import scipp as sc
 
-from align_crystal.mcstas.h5_reader import numeric_parameters
-from align_crystal.reduction.solid_angle import rectangle_solid_angle
+from ..mcstas.h5_reader import numeric_parameters
+from .solid_angle import rectangle_solid_angle
 
 
 def detector_solid_angle(folder, component="detector", sample="sample_pos", geometry="cylinder"):

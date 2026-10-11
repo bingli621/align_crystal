@@ -11,11 +11,14 @@ tools to read the McStas NeXus output (McStasToX, scippneutron) and convert to m
 ```
 src/align_crystal/
   instrument/   instruments as configurations (no McStas knowledge)
-    components.py     the kinds of component, one dataclass each (named after the McStas component: Source_simple, Slit, Single_crystal, Monitor_nD, ...)
+    components/       the kinds of component, one dataclass each, named after the McStas component
+                      (misc.py: Component, Progress_bar, Slit, Arm; source.py: Source_simple;
+                       detector.py: Monitor, Monitor_nD; sample.py: Single_crystal)
     instrument.py     Instrument: the components of an instrument, each recording its placement (any set of components)
-    diffractometer.py Diffractometer(Instrument): its components, derivations and defaults
-    params.yaml       all default values of the diffractometer
-  file_io/      loader.py: load_config / save_config, an Instrument from/to YAML
+    diffractometer/   the diffractometer
+      diffractometer.py Diffractometer(Instrument): its components, derivations and defaults
+      params.yaml       all default values
+  file_io/      loader.py: the YAML implementation of the file format that instrument/ defines (load_config / save_config)
   mcstas/       everything that talks to McStas
     builder.py        builds the McStasScript instrument from a config (goniometer: omega Y, chi -Z, phi X)
     simulater.py      run, dump_beam, run_from_beam (also runnable as a script)
@@ -34,7 +37,7 @@ Dependencies point inwards: `file_io`, `mcstas` and `reduction` use `instrument`
 
 ## Configuration
 
-`instrument/params.yaml` holds every default of the diffractometer: one section per McStas component
+`instrument/diffractometer/params.yaml` holds every default of the diffractometer: one section per McStas component
 (its parameters) plus `placements` (`at`, `rotated`, `relative` of each component, which each component keeps). Your own YAML
 lists only what changes; unknown keys are rejected, and `null` values are derived (the
 wavelength from `energy_meV`, the source focus distance from the sample position).

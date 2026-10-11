@@ -1,6 +1,6 @@
 """Aluminium: fcc Al, the McStas built-in reflection list Al.lau."""
 
-from align_crystal.samples.sample import oriented_sample
+from ..sample import oriented_sample
 
 
 def aluminium(mosaic=5.0):

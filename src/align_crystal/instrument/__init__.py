@@ -1,11 +1,11 @@
 """Instruments as configurations (no McStas knowledge, see mcstas/ for that).
 
-components.py   the kinds of component, one dataclass each
+components/     the kinds of component, one dataclass each (misc.py, source.py, detector.py, sample.py)
 instrument.py   Instrument: the components of an instrument, each with its placement
-diffractometer.py   Diffractometer(Instrument): its components and defaults (params.yaml)
+diffractometer/   Diffractometer(Instrument): its components (diffractometer.py) and defaults (params.yaml)
 """
 
-from align_crystal.instrument.components import (
+from .components import (
     Arm,
     Component,
     Monitor,
@@ -15,8 +15,8 @@ from align_crystal.instrument.components import (
     Slit,
     Source_simple,
 )
-from align_crystal.instrument.diffractometer import Diffractometer
-from align_crystal.instrument.instrument import Instrument
+from .diffractometer import Diffractometer
+from .instrument import Instrument
 
 __all__ = [
     "Arm",

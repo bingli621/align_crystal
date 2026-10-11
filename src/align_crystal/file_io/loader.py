@@ -1,47 +1,38 @@
-"""Load and save an Instrument as YAML, on top of the default values of its kind."""
-
-import copy
+"""YAML for the Instrument: the implementation of the `ConfigFormat` that instrument.py defines,
+and the convenient `load_config` / `save_config` that inject it."""
 
 import yaml
 
-from align_crystal.instrument import Diffractometer, Instrument
+from ..instrument import Diffractometer, Instrument
 
 
-def _read_yaml(path):
-    with open(path) as f:
-        return yaml.safe_load(f) or {}
+class YamlFormat:
+    """Implements `align_crystal.instrument.instrument.ConfigFormat` with YAML files."""
+
+    def read(self, path):
+        with open(path) as f:
+            return yaml.safe_load(f) or {}
+
+    def write(self, data, path):
+        with open(path, "w") as f:
+            yaml.safe_dump(data, f, sort_keys=False)
 
 
-def _merge(base, over, roles, path=""):
-    """Return `base` with the values of `over` applied, recursively. Unknown keys raise.
-    The section of a component (a role) may also set `name`, its McStas instance name."""
-    out = copy.deepcopy(base)
-    for key, value in over.items():
-        if key not in base and not (key == "name" and path.rstrip(".") in roles):
-            raise ValueError(f"Unknown config key: {path}{key}")
-        if isinstance(base.get(key), dict) and isinstance(value, dict):
-            out[key] = _merge(base[key], value, roles, f"{path}{key}.")
-        else:
-            out[key] = value
-    return out
+YAML = YamlFormat()
 
 
-def load_config(source=None, cls=Diffractometer):
-    """An instrument of kind `cls` with its default values and `source` applied on top: a YAML
-    path, a dict of overrides or None. An Instrument is returned as is."""
+def load_config(source=None, cls=Diffractometer, fmt=YAML):
+    """An instrument of kind `cls` with its default values and `source` applied on top: a file
+    path (read with `fmt`), a dict of overrides or None. An Instrument is returned as is."""
     if isinstance(source, Instrument):
         return source
-    overrides = (
-        source if isinstance(source, dict) else _read_yaml(source) if source else {}
-    )
-    defaults = _read_yaml(cls.PARAMS_FILE)
-    data = _merge(
-        defaults, overrides, defaults["placements"]
-    )  # roles = the keys of placements
-    return cls.from_dict(data)
+    if isinstance(source, dict):
+        return cls.from_overrides(source, fmt)
+    if source:
+        return cls.from_file(source, fmt)
+    return cls.from_overrides({}, fmt)
 
 
-def save_config(inst, path):
-    """Write the (resolved) instrument to YAML, to archive next to the run output."""
-    with open(path, "w") as f:
-        yaml.safe_dump(inst.to_dict(), f, sort_keys=False)
+def save_config(inst, path, fmt=YAML):
+    """Write the (resolved) instrument to `path`, to archive next to the run output."""
+    inst.to_file(path, fmt)

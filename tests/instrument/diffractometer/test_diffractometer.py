@@ -2,8 +2,7 @@ import copy
 
 import pytest
 
-from align_crystal.file_io import load_config
-from align_crystal.file_io.loader import _read_yaml
+from align_crystal.file_io import YAML, load_config
 from align_crystal.instrument import Diffractometer, Instrument, Source_simple
 
 
@@ -52,7 +51,7 @@ def test_source_focus_follows_the_sample_position():
 
 def test_direct_construction_is_resolved():
     """The focus distance is derived by the Diffractometer itself, not only by load_config."""
-    raw = _read_yaml(Diffractometer.PARAMS_FILE)
+    raw = YAML.read(Diffractometer.PARAMS_FILE)
     assert raw["source"]["dist"] is None
     inst = Diffractometer.from_dict(raw)
     assert inst.source.dist == inst.sample_pos.at[2] == 2.0

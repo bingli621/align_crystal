@@ -2,7 +2,7 @@
 # (see file_io/loader.py: load_config); null means "derive it" (see __post_init__ of the components and of Diffractometer) or "not applicable".
 name: align_crystal_diffractometer   # McStas instrument name
 
-# One section per McStas component (its class in components.py is named after it); the key is
+# One section per McStas component (its class in components/ is named after it); the key is
 # its instance name in McStas and the role the code refers to it by, the rest its parameters.
 # Add `name: other` to give it a different McStas instance name than its key.
 origin: {}

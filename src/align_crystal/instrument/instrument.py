@@ -1,17 +1,43 @@
 """A generic instrument: a set of components, each with a placement.
 
-Pure entities, no file, YAML or McStas knowledge (see file_io/loader.py to load them and
-mcstas/builder.py to build the McStas instrument from them). A kind of instrument subclasses
-`Instrument` and builds its components, in order, in `from_dict` (see diffractometer.py).
+Pure entities, no file, YAML or McStas knowledge. Files are reached through `ConfigFormat`, an
+abstraction defined here and implemented by the outer layer (file_io/loader.py has the YAML one):
+`from_file` and `to_file` take the format as an argument, so this module never imports an
+implementation. mcstas/builder.py builds the McStas instrument from an Instrument. A kind of
+instrument subclasses `Instrument` and builds its components, in order, in `from_dict` (see
+diffractometer/diffractometer.py).
 """
 
+import copy
 from dataclasses import asdict, dataclass, fields
 from pathlib import Path
-from typing import ClassVar
+from typing import ClassVar, Protocol
 
-from align_crystal.instrument.components import Component
+from .components import Component
 
 PLACEMENT = ("at", "rotated", "relative")  # the fields of a component that say where it sits
+
+
+class ConfigFormat(Protocol):
+    """How a nested dict is stored in a file (YAML, JSON, ...). The outer layer implements it."""
+
+    def read(self, path) -> dict: ...
+
+    def write(self, data: dict, path) -> None: ...
+
+
+def _merge(base, over, roles, path=""):
+    """Return `base` with the values of `over` applied, recursively. Unknown keys raise.
+    The section of a component (a role) may also set `name`, its McStas instance name."""
+    out = copy.deepcopy(base)
+    for key, value in over.items():
+        if key not in base and not (key == "name" and path.rstrip(".") in roles):
+            raise ValueError(f"Unknown config key: {path}{key}")
+        if isinstance(base.get(key), dict) and isinstance(value, dict):
+            out[key] = _merge(base[key], value, roles, f"{path}{key}.")
+        else:
+            out[key] = value
+    return out
 
 
 @dataclass(kw_only=True)
@@ -20,8 +46,8 @@ class Instrument:
     knows where it sits). A component is also reachable as an attribute: `inst.source` is
     `inst.components["source"]`.
 
-    A subclass sets the class attribute `PARAMS_FILE` (YAML with the default value of every
-    parameter) and implements `from_dict`. Nulls that depend on several components are derived in
+    A subclass sets the class attribute `PARAMS_FILE` (a file with the default value of every
+    parameter, in the format used to read it) and implements `from_dict`. Nulls that depend on several components are derived in
     the subclass's `__post_init__`, which must end with `super().__post_init__()`.
     """
 
@@ -49,6 +75,24 @@ class Instrument:
         with its parameters, and `placements` with the `at`, `rotated` and `relative` of each.
         A subclass creates its components here, one after the other."""
         raise NotImplementedError
+
+    @classmethod
+    def from_overrides(cls, overrides: dict, fmt: ConfigFormat):
+        """The instrument with the default values of its kind (read from `PARAMS_FILE` with `fmt`)
+        and the nested dict `overrides` applied on top. Keys that are not in the defaults raise."""
+        defaults = fmt.read(cls.PARAMS_FILE)
+        roles = defaults["placements"]  # one entry per component
+        return cls.from_dict(_merge(defaults, overrides, roles))
+
+    @classmethod
+    def from_file(cls, path, fmt: ConfigFormat):
+        """The instrument with the default values of its kind and the file `path` on top; only
+        the values the file lists are changed."""
+        return cls.from_overrides(fmt.read(path), fmt)
+
+    def to_file(self, path, fmt: ConfigFormat):
+        """Write the instrument to `path`, in the same layout as the default values."""
+        fmt.write(self.to_dict(), path)
 
     def to_dict(self):
         """The inverse of `from_dict`. Unset optional values of a component (its `name`, a static

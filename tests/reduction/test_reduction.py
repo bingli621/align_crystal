@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from align_crystal.reduction import goniometer_matrix
+from align_crystal.reduction import goniometer_matrix, wavelength
 
 
 def test_goniometer_matrix():
@@ -14,3 +14,8 @@ def test_goniometer_matrix():
     assert goniometer_matrix(0, 0, 90) @ [0, 1, 0] == pytest.approx([0, 0, 1])
     R = goniometer_matrix(10, 20, 30)
     assert R @ R.T == pytest.approx(np.eye(3))
+
+
+def test_wavelength_of_the_energy():
+    assert wavelength(14).value == pytest.approx(2.417262, abs=1e-5)
+    assert wavelength(14).unit == "angstrom"

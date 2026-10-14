@@ -1,0 +1,90 @@
+# Parameters of the diffractometer: everything in one complete file.
+# To change something, copy this file, edit it and load it (SingleCrystalDiffractometer.from_file). null means "calculate it": each
+# component does that itself (core/components/), or the diffractometer from the others (core/diffractometer.py).
+name: align_crystal_diffractometer   # McStas instrument name
+
+# The control parameters: the McStas instrument parameters, which each run may set (a `value` null:
+# each run must set it). Where a component takes a number it may name one of these instead (or an
+# expression of them, "-chi"), as in McStas.
+controls:
+  energy_meV: {value: null, unit: meV, comment: neutron energy (monochromatic)}
+  omega:      {value: 0.0,  unit: deg, comment: goniometer rotation about +Y}
+  chi:        {value: 0.0,  unit: deg, comment: goniometer rotation about -Z}
+  phi:        {value: 0.0,  unit: deg, comment: goniometer rotation about +X}
+
+# One section per role, in the order of the beam: the order in which the components are built (a
+# component can only be relative to one before it). Each has its `component` (the McStas component,
+# the class of the same name in core/components/), its parameters, and last where it sits: McStas
+# AT (m), ROTATED (deg; numbers or control parameter names) and RELATIVE (a role; null = absolute).
+# The role is also the instance name in McStas; add `name: other` to a section to give it another.
+origin:
+  component: Progress_bar
+  at: [0, 0, 0]
+  rotated: null
+  relative: null
+
+source:                # monochromatic
+  component: Source_simple
+  energy_meV: energy_meV   # meV: the control parameter, set by each run
+  radius: 0.03         # m
+  focus_on: sample_pos # the component the source focuses on
+  dist: null           # source -> focus plane, m; null = z of focus_on
+  flux: 1.0e+10        # PyYAML needs the sign: 1.0e10 would load as a string
+  at: [0, 0, 0]
+  rotated: null
+  relative: origin
+
+slit1:
+  component: Slit
+  size: 0.01           # opening and source focus (x and y), m
+  at: [0, 0, 1.0]
+  rotated: null
+  relative: source
+
+incident_monitor:      # integrated incident intensity; the neutrons carry on
+  component: Monitor
+  at: [0, 0, 1.9]      # 10 cm before the sample
+  rotated: null
+  relative: source
+
+sample_pos:            # the beam hits the goniometer centre; the beam can be dumped here
+  component: Arm
+  at: [0, 0, 2.0]
+  rotated: null
+  relative: source
+
+# Goniometer arms, outermost first, each rotated by a control parameter, so it can be scanned.
+gonio_omega:
+  component: Arm
+  at: [0, 0, 0]
+  rotated: [0, omega, 0]    # about +Y
+  relative: sample_pos
+gonio_chi:
+  component: Arm
+  at: [0, 0, 0]
+  rotated: [0, 0, "-chi"]   # about -Z
+  relative: gonio_omega
+gonio_phi:
+  component: Arm
+  at: [0, 0, 0]
+  rotated: [phi, 0, 0]      # about +X
+  relative: gonio_chi
+
+crystal:
+  component: Single_crystal
+  size: 0.005          # cube edge, m
+  order: 1             # single scattering only (no multiple scattering): much faster
+  at: [0, 0, 0]
+  rotated: null
+  relative: gonio_phi
+
+detector:              # cylindrical ("banana") detector around the vertical axis through the sample
+  component: Monitor_nD
+  radius: 1.0          # m
+  height: 0.5          # m
+  two_theta_range: [-125.0, -5.0]   # deg, signed: negative = right of the beam
+  n_theta: 1200
+  n_y: 50
+  at: [0, 0, 0]
+  rotated: null
+  relative: sample_pos

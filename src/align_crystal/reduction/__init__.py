@@ -6,7 +6,7 @@ from .normalization import (
     normalize_scan,
 )
 from .peaks import Peak, centre_of_mass, find_peaks
-from .reduction import goniometer_matrix, to_Q, to_sample_frame
+from .reduction import goniometer_matrix, to_Q, to_sample_frame, wavelength
 from .solid_angle import rectangle_solid_angle
 
 __all__ = [
@@ -20,4 +20,5 @@ __all__ = [
     "rectangle_solid_angle",
     "to_Q",
     "to_sample_frame",
+    "wavelength",
 ]

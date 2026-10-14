@@ -1,29 +1,51 @@
 import pytest
 
-from align_crystal.core import Param, Slit
+from align_crystal.core import ControlParam, DesignParam, Slit
 
 DATA = {
     "name": "tiny",
-    "components": {"slit": "Slit"},
-    "slit": {"size": 0.5},
-    "placements": {"slit": {"at": [0, 0, 1], "rotated": None, "relative": None}},
+    "slit": {"component": "Slit", "size": 0.5, "at": [0, 0, 1], "rotated": None, "relative": None},
 }
 
 
-def test_make_joins_the_section_and_the_placement_and_names_by_the_role():
-    slit = Param(DATA).make(Slit, "slit")
-    assert (slit.size, slit.at, slit.name) == (0.5, [0, 0, 1], "slit")
+def test_make_takes_the_section_with_where_it_sits():
+    slit = DesignParam(DATA).make(Slit, "slit")
+    assert (slit.size, slit.at) == (0.5, [0, 0, 1])
 
 
 @pytest.mark.parametrize(
     "changes, match",
     [
-        ({"extra": {}}, "Unknown config key: extra"),
-        ({"placements": {**DATA["placements"], "other": {}}}, "placements.other"),
-        ({"components": {"slit": "Nope"}}, "Unknown component 'Nope'"),
-        ({"slit": {"sizee": 1}}, "slit.*sizee"),
+        ({"extra": 1}, "Unknown config key: extra"),
+        ({"slit": {"size": 0.5, "at": [0, 0, 1]}}, "No component in the section of 'slit'"),
+        ({"slit": {"component": "Nope"}}, "Unknown component 'Nope'"),
+        ({"slit": {"component": "Slit", "sizee": 1, "at": [0, 0, 1]}}, "slit.*sizee"),
+        ({"slit": {"component": "Slit", "size": 0.5}}, "slit.*'at'"),
     ],
 )
 def test_make_components_rejects_unknown_things(changes, match):
     with pytest.raises(ValueError, match=match):
-        Param({**DATA, **changes}).make_components({"Slit": Slit})
+        DesignParam({**DATA, **changes}).make_components({"Slit": Slit})
+
+
+def test_the_order_is_the_order_of_the_sections():
+    data = {
+        "b": {"component": "Slit", "size": 1, "at": [0, 0, 0]},
+        "name": "two",
+        "a": {"component": "Slit", "size": 2, "at": [0, 0, 1], "relative": "b"},
+    }
+    assert list(DesignParam(data).make_components({"Slit": Slit})) == ["b", "a"]
+
+
+def test_control_param_replaces_values_and_rejects_unknown_names():
+    controls = ControlParam({"omega": 0.0}, {"omega": "deg"}, {"omega": ""})
+    assert controls.replace(omega=30)["omega"] == 30 and controls["omega"] == 0.0  # a copy
+    with pytest.raises(ValueError, match="Unknown control parameter.*omgea"):
+        controls.replace(omgea=30)
+
+
+def test_complete_raises_on_a_control_that_is_not_set():
+    controls = ControlParam({"e": None, "omega": 0.0}, {}, {})
+    with pytest.raises(ValueError, match="not set: e$"):
+        controls.complete()
+    assert controls.replace(e=14).complete()["e"] == 14

@@ -13,12 +13,11 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
-import scipp as sc
 from matplotlib.animation import FuncAnimation, PillowWriter
 from matplotlib.colors import LogNorm
 
 from align_crystal.mcstas.h5_reader import read_scan
-from align_crystal.reduction import normalize_scan, to_Q, to_sample_frame
+from align_crystal.reduction import normalize_scan, to_Q, to_sample_frame, wavelength
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -51,7 +50,7 @@ def plot_scan_Q(
     else:
         points = read_scan(folder)
     qs = [
-        to_sample_frame(to_Q(ev, sc.scalar(p["wavelength"], unit="angstrom")), p)
+        to_sample_frame(to_Q(ev, wavelength(p["energy_meV"])), p)
         for p, ev in points
     ]
 

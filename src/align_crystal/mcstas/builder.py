@@ -29,19 +29,16 @@ OUTPUT_DIR = Path(__file__).resolve().parents[3] / "mcstas_output"
 
 
 def _add_instrument_parameters(inst, cfg):
-    for axis, about in (("omega", "Y"), ("chi", "-Z"), ("phi", "X")):
+    """One McStas instrument parameter per control parameter of `cfg`, with its calculated value,
+    if any (a run sets its own with `set_parameters`, and must set those without one)."""
+    controls = cfg.control_param()
+    for name, value in controls.values.items():
         inst.add_parameter(
-            axis,
-            value=getattr(cfg, f"gonio_{axis}").angle,
-            unit="deg",
-            comment=f"goniometer rotation about {about}",
+            name,
+            value=value,
+            unit=controls.units[name],
+            comment=controls.comments[name],
         )
-    inst.add_parameter(
-        "wavelength",
-        value=cfg.source.wavelength,
-        unit="angstrom",
-        comment="neutron wavelength (monochromatic)",
-    )
 
 
 def _name(cfg, role):
@@ -70,8 +67,8 @@ def _configure_source(comp, c, cfg, sample):
     comp.dist = c.dist
     comp.focus_xw = size
     comp.focus_yh = size
-    comp.lambda0 = "wavelength"
-    comp.dlambda = 0  # monochromatic
+    comp.E0 = c.energy_meV  # a number, or the name of the control parameter
+    comp.dE = 0  # monochromatic
     comp.flux = c.flux
 
 
@@ -124,8 +121,8 @@ _CONFIGURE = {
 
 
 def build_instrument(config, sample=None, input_path=OUTPUT_DIR):
-    """Return a McStasScript instrument with the components of `config` (an Instrument, see
-    `Instrument`) added in their order."""
+    """Return a McStasScript instrument with the components of `config` (a
+    `SingleCrystalDiffractometer`) added in their order."""
     sample = sample or aluminium()
     Path(input_path).mkdir(parents=True, exist_ok=True)
     inst = instr.McStas_instr(config.name, input_path=str(input_path))
@@ -143,12 +140,10 @@ def build_instrument(config, sample=None, input_path=OUTPUT_DIR):
 
 
 if __name__ == "__main__":
-    import sys
-
-    sys.path.insert(0, str(Path(__file__).resolve().parents[3]))  # the repository root: instruments/
-    from instruments import SingleCrystalDiffractometer
+    from align_crystal.core import SingleCrystalDiffractometer
 
     inst = build_instrument(SingleCrystalDiffractometer.from_file())
     inst.show_parameters()
     inst.show_components()
     inst.show_diagram()
+    inst.show_instrument_file(line_numbers=True)

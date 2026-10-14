@@ -15,10 +15,16 @@ Q_GRAPH = {
 }
 
 
+def wavelength(energy_meV):
+    """The neutron wavelength of `energy_meV` (the energy control parameter of a run), as a scipp
+    scalar in angstrom: lambda[A] = sqrt(81.80421 / E[meV])."""
+    return sc.scalar(float(np.sqrt(81.80421 / energy_meV)), unit="angstrom")
+
+
 def to_Q(events, wavelength):
     """Add elastic momentum transfer to `events` (as returned by `read_scan`).
 
-    `wavelength` is a scipp scalar (e.g. sc.scalar(2.417262, unit="angstrom")). Uses
+    `wavelength` is a scipp scalar (e.g. `wavelength(params["energy_meV"])`). Uses
     scippneutron's graph from the detector positions (`position`, `sample_position`,
     `source_position`): returns a DataArray with coords two_theta, Qx, Qy, Qz [1/angstrom],
     in the beam frame (z along ki, y up).

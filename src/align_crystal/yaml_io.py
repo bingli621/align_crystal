@@ -1,7 +1,7 @@
 """YAML files: the only module that knows YAML.
 
 `yaml_loader` is a loader (a function from a path to the nested dict that the entities take, see
-`Instrument.from_dict`), and `write_yaml` writes that dict back (`Instrument.to_dict`).
+`SingleCrystalDiffractometer.from_dict`), and `write_yaml` writes that dict back (`to_dict`).
 """
 
 import yaml

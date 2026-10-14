@@ -15,7 +15,7 @@ from scipy import ndimage
 from scipy.spatial import cKDTree
 
 from .normalization import normalize_scan
-from .reduction import to_Q, to_sample_frame
+from .reduction import to_Q, to_sample_frame, wavelength
 
 
 @dataclass
@@ -52,7 +52,7 @@ def load_points(folder, **kwargs):
         sq_per_pixel = sc.bins(begin=c["begin"], dim=c["dim"], data=sq).bins.sum()
         pixels = events.bins.sum()
         qs = to_sample_frame(
-            to_Q(pixels, sc.scalar(params["wavelength"], unit="angstrom")), params
+            to_Q(pixels, wavelength(params["energy_meV"])), params
         )
         q.append(
             np.stack(

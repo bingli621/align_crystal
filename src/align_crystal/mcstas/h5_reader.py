@@ -36,9 +36,7 @@ def read_scan(folder, component="detector", source="source", sample="sample_pos"
     for entry in range(1, n_entries + 1):
         with mcstastox.Read(str(folder), entry_number=entry) as data:
             params = numeric_parameters(data.get_instrument_parameters())
-            grouped = data.export_scipp(source, sample, component_name=component)[
-                "events"
-            ]
+            grouped = data.export_scipp(source, sample, component_name=component)["events"]
             sample_pos = data.get_global_component_coordinates(sample)
 
         pixels = grouped.bins.sum()  # events are grouped by pixel id; sum the weights

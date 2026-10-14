@@ -11,11 +11,14 @@ from .components import (
     Slit,
     Source_simple,
 )
+from .components.sample import aluminium
 from .diffractometer import SingleCrystalDiffractometer
 from .params import Control, ControlParam
 
 
-def build_diffractometer() -> SingleCrystalDiffractometer:
+def build_diffractometer(crystal: Single_crystal | None = None) -> SingleCrystalDiffractometer:
+    """The default diffractometer, with `crystal` (a `Single_crystal`, e.g.
+    `la2ni7(at=[0, 0, 0], relative="gonio_phi")`) as its sample, as it is; None: aluminium."""
     # the control parameters (McStas instrument parameters); a value None: every run sets it
     energy_meV = Control(None, "meV", "neutron energy (monochromatic)")
     omega = Control(0.0, "deg", "goniometer rotation about +Y")
@@ -42,12 +45,8 @@ def build_diffractometer() -> SingleCrystalDiffractometer:
     gonio_omega = Arm(at=[0, 0, 0], rotated=[0, "omega", 0], relative="sample_pos")  # about +Y
     gonio_chi = Arm(at=[0, 0, 0], rotated=[0, 0, "-chi"], relative="gonio_omega")  # about -Z
     gonio_phi = Arm(at=[0, 0, 0], rotated=["phi", 0, 0], relative="gonio_chi")  # about +X
-    crystal = Single_crystal(
-        size=0.005,  # cube edge
-        order=1,  # single scattering only (no multiple scattering): much faster
-        at=[0, 0, 0],
-        relative="gonio_phi",
-    )
+    # the sample, in the innermost goniometer arm: swap it for another crystal
+    crystal = crystal or aluminium(at=[0, 0, 0], relative="gonio_phi")
     # cylindrical ("banana") detector around the vertical axis through the sample
     detector = Monitor_nD(
         radius=1.0,
@@ -61,9 +60,7 @@ def build_diffractometer() -> SingleCrystalDiffractometer:
 
     return SingleCrystalDiffractometer(
         name="align_crystal_diffractometer",
-        controls=ControlParam.from_controls(
-            energy_meV=energy_meV, omega=omega, chi=chi, phi=phi
-        ),
+        controls=ControlParam.from_controls(energy_meV=energy_meV, omega=omega, chi=chi, phi=phi),
         origin=origin,
         source=source,
         slit=slit,

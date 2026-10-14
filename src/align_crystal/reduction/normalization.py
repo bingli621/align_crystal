@@ -10,9 +10,7 @@ from ..mcstas.h5_reader import numeric_parameters
 from .solid_angle import rectangle_solid_angle
 
 
-def detector_solid_angle(
-    folder, component="detector", sample="sample_pos", geometry="cylinder"
-):
+def detector_solid_angle(folder, component="detector", sample="sample_pos", geometry="cylinder"):
     """Solid angle [sr] of every pixel of a banana (theta, y) detector, as a scipp DataArray over
     'pixel_id' with the pixel `position` coordinate. Includes pixels that received no neutrons.
 
@@ -66,7 +64,9 @@ def normalize_scan(
     data simulated from a beam dump (`run_from_beam`) the monitor and the source are only in the
     file of the beam run (`dump_beam`, `mcstas_output/beam/mccode.h5`). That one monitor reading then
     normalizes all angles, and the source position is rebuilt from the beam file (source ->
-    sample vector) so that the incident beam direction is known.
+    sample vector) so that the incident beam direction is known. The parameters of the beam run
+    fill in the ones the scan entries lack: a split run does not store the energy, since the
+    source is not in it.
 
     Returns a scipp DataGroup with one group per scan point (`entry1`, `entry2`, ...) holding
     the instrument `parameters`, the `monitor_intensity` and the normalized `events`. If `out` is
@@ -79,12 +79,12 @@ def normalize_scan(
         n_entries = data.get_number_of_entries()
 
     beam_incident = beam_source_to_sample = None
+    beam_params = {}
     if monitor_file is not None:
         monitor_file = Path(monitor_file)
-        with mcstastox.Read(
-            str(monitor_file.parent), filename=monitor_file.name
-        ) as beam:
+        with mcstastox.Read(str(monitor_file.parent), filename=monitor_file.name) as beam:
             beam_incident = incident_intensity(beam, monitor)
+            beam_params = numeric_parameters(beam.get_instrument_parameters())
             beam_source_to_sample = beam.get_global_component_coordinates(
                 f"MCPL_{sample}"
             ) - beam.get_global_component_coordinates(source)
@@ -92,17 +92,14 @@ def normalize_scan(
     result = sc.DataGroup()
     for entry in range(1, n_entries + 1):
         with mcstastox.Read(str(folder), entry_number=entry) as data:
-            params = numeric_parameters(data.get_instrument_parameters())
+            # the entry's own values win (omega, chi, phi); the beam run gives e.g. the energy
+            params = beam_params | numeric_parameters(data.get_instrument_parameters())
             if monitor_file is None:
-                events = data.export_scipp(source, sample, component_name=component)[
-                    "events"
-                ]
+                events = data.export_scipp(source, sample, component_name=component)["events"]
                 incident = incident_intensity(data, monitor)
             else:
                 # the source is not in the file: use the sample as a stand-in and fix it below
-                events = data.export_scipp(sample, sample, component_name=component)[
-                    "events"
-                ]
+                events = data.export_scipp(sample, sample, component_name=component)["events"]
                 events.coords["source_position"] = sc.vector(
                     events.coords["sample_position"].value - beam_source_to_sample,
                     unit="m",

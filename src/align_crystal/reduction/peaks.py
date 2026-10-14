@@ -51,14 +51,8 @@ def load_points(folder, **kwargs):
         sq = sc.DataArray(c["data"].data * c["data"].data, coords=c["data"].coords)
         sq_per_pixel = sc.bins(begin=c["begin"], dim=c["dim"], data=sq).bins.sum()
         pixels = events.bins.sum()
-        qs = to_sample_frame(
-            to_Q(pixels, wavelength(params["energy_meV"])), params
-        )
-        q.append(
-            np.stack(
-                [qs.coords[f"{a}_sample"].values for a in ("Qx", "Qy", "Qz")], axis=1
-            )
-        )
+        qs = to_sample_frame(to_Q(pixels, wavelength(params["energy_meV"])), params)
+        q.append(np.stack([qs.coords[f"{a}_sample"].values for a in ("Qx", "Qy", "Qz")], axis=1))
         w.append(pixels.values)
         var.append(sq_per_pixel.values)
         idx.append(np.full(len(w[-1]), k))
@@ -105,6 +99,7 @@ def find_peaks(
     min_points=5,
     min_significance=3.0,
     points=None,
+    monitor_file=None,
 ):
     """Find peaks in the sample-frame Q space of a scan; strongest first.
 
@@ -115,9 +110,10 @@ def find_peaks(
     (1/angstrom, keep it below half the lattice spacing so neighbours are not merged). Peaks with
     fewer than `min_points` pixel contributions, or an intensity below `min_significance` times
     its uncertainty, are dropped. Pass `points` (from `load_points`)
-    to reuse already loaded data.
+    to reuse already loaded data. For data from `run_from_beam`, give the beam run's
+    `monitor_file` (see `normalize_scan`).
     """
-    p = points if points is not None else load_points(folder)
+    p = points if points is not None else load_points(folder, monitor_file=monitor_file)
     q = p["q"]
     lo = q.min(axis=0) - 2 * voxel
     shape = np.ceil((q.max(axis=0) + 2 * voxel - lo) / voxel).astype(int)

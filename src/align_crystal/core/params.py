@@ -128,9 +128,7 @@ class ControlParam:
         a name that is not a control parameter."""
         unknown = set(values) - set(self.values)
         if unknown:
-            raise ValueError(
-                f"Unknown control parameter(s): {', '.join(sorted(unknown))}"
-            )
+            raise ValueError(f"Unknown control parameter(s): {', '.join(sorted(unknown))}")
         return replace(self, values={**self.values, **values})
 
     def complete(self):
@@ -139,4 +137,3 @@ class ControlParam:
         if unset:
             raise ValueError(f"Control parameter(s) not set: {', '.join(unset)}")
         return self
-

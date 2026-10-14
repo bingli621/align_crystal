@@ -21,7 +21,7 @@ from align_crystal.core.components import (
     Slit,
     Source_simple,
 )
-from align_crystal.samples import aluminium
+from align_crystal.core.components.sample import CIF_DIR
 
 # McStas-generated files (.instr, .c, compiled binary) and simulation output go here, not in
 # the project root. Created on use.
@@ -53,7 +53,7 @@ def _place(inst, name, c):
     return comp
 
 
-def _configure_source(comp, c, cfg, sample):
+def _configure_source(comp, c, cfg):
     size = cfg.slit.size  # the source focuses on the slit opening
     comp.radius = c.radius
     comp.dist = c.dist
@@ -64,30 +64,31 @@ def _configure_source(comp, c, cfg, sample):
     comp.flux = c.flux
 
 
-def _configure_slit(comp, c, cfg, sample):
+def _configure_slit(comp, c, cfg):
     comp.xwidth = c.size
     comp.yheight = c.size
 
 
-def _configure_monitor(comp, c, cfg, sample):
+def _configure_monitor(comp, c, cfg):
     """Integrated incident intensity, twice the slit opening; the neutrons carry on."""
     comp.xwidth = 2 * cfg.slit.size
     comp.yheight = 2 * cfg.slit.size
     comp.restore_neutron = 1
 
 
-def _configure_crystal(comp, c, cfg, sample):
+def _configure_crystal(comp, c, cfg):
     comp.xwidth = comp.yheight = comp.zdepth = c.size
-    comp.mosaic = sample.mosaic
+    comp.mosaic = c.mosaic
     comp.order = c.order
-    comp.reflections = f'"{sample.reflections}"'
+    cif = CIF_DIR / c.reflections  # a CIF file of core/cif/, else as given (a McStas list)
+    comp.reflections = f'"{cif if cif.is_file() else c.reflections}"'
     comp.recip_cell = 1
-    comp.ax, comp.ay, comp.az = sample.astar
-    comp.bx, comp.by, comp.bz = sample.bstar
-    comp.cx, comp.cy, comp.cz = sample.cstar
+    comp.ax, comp.ay, comp.az = c.astar
+    comp.bx, comp.by, comp.bz = c.bstar
+    comp.cx, comp.cy, comp.cz = c.cstar
 
 
-def _configure_detector(comp, c, cfg, sample):
+def _configure_detector(comp, c, cfg):
     """Stored as an event list with pixel ids, so mcstastox can read it (banana th/y)."""
     lo, hi = c.two_theta_range
     comp.radius = c.radius
@@ -112,18 +113,19 @@ _CONFIGURE = {
 }
 
 
-def build_instrument(config, sample=None, input_path=OUTPUT_DIR):
+def build_instrument(config, input_path=OUTPUT_DIR):
     """Return a McStasScript instrument with the components of `config` (a
-    `SingleCrystalDiffractometer`) added in their order. The crystal is `sample` if given, else
-    `config.sample`, else aluminium."""
-    sample = sample or config.sample or aluminium()  # a given one, the diffractometer's, aluminium
+    `SingleCrystalDiffractometer`) added in their order."""
     Path(input_path).mkdir(parents=True, exist_ok=True)
     inst = instr.McStas_instr(config.name, input_path=str(input_path))
     _add_instrument_parameters(inst, config)
-    for name, c in config.components.items():  # in order: McStas positions are relative to earlier ones
+    for (
+        name,
+        c,
+    ) in config.components.items():  # in order: McStas positions are relative to earlier ones
         comp = _place(inst, name, c)
         if type(c) in _CONFIGURE:
-            _CONFIGURE[type(c)](comp, c, config, sample)
+            _CONFIGURE[type(c)](comp, c, config)
     return inst
 
 

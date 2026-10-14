@@ -31,9 +31,7 @@ def to_Q(events, wavelength):
     """
     events = events.copy(deep=False)
     events.coords["wavelength"] = wavelength
-    return events.transform_coords(
-        ["two_theta", "Qx", "Qy", "Qz"], graph=Q_GRAPH, keep_inputs=True
-    )
+    return events.transform_coords(["two_theta", "Qx", "Qy", "Qz"], graph=Q_GRAPH, keep_inputs=True)
 
 
 def _rot(axis, angle_deg):
@@ -67,7 +65,5 @@ def to_sample_frame(events, params):
     q_sample = R.T @ q_lab  # rotation matrices: inverse = transpose
     events = events.copy(deep=False)
     for name, values in zip(("Qx_sample", "Qy_sample", "Qz_sample"), q_sample):
-        events.coords[name] = sc.array(
-            dims=events.dims, values=values, unit="1/angstrom"
-        )
+        events.coords[name] = sc.array(dims=events.dims, values=values, unit="1/angstrom")
     return events

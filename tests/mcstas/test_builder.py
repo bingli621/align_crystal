@@ -1,5 +1,7 @@
+from pathlib import Path
+
 from align_crystal.mcstas.builder import build_instrument
-from align_crystal.samples import la2ni7
+from align_crystal.core import build_diffractometer, la2ni7
 
 
 def test_components_are_added_in_order_with_their_mcstas_names(tmp_path, diffractometer):
@@ -22,18 +24,12 @@ def test_the_parameters_and_the_goniometer_rotations(tmp_path, diffractometer):
     assert chi.ROTATED_data == [0, 0, "-chi"] and chi.ROTATED_reference == "gonio_omega"
 
 
-def test_the_sample_sets_the_crystal(tmp_path, diffractometer):
-    sample = la2ni7(mosaic=60)
-    inst = build_instrument(diffractometer(), sample=sample, input_path=tmp_path)
-    crystal = next(c for c in inst.component_list if c.name == "crystal")
-    assert crystal.mosaic == 60 and sample.reflections in crystal.reflections
-
-
-def test_the_sample_of_the_diffractometer_is_used_unless_one_is_given(tmp_path, diffractometer):
-    cfg = diffractometer()
-    assert cfg.sample is None  # the default: aluminium in the builder
-    cfg.sample = la2ni7(mosaic=60)
+def test_the_crystal_of_the_diffractometer_sets_the_mcstas_crystal(tmp_path):
+    cfg = build_diffractometer(la2ni7(mosaic=60, at=[0, 0, 0], relative="gonio_phi"))
     inst = build_instrument(cfg, input_path=tmp_path)
-    assert next(c for c in inst.component_list if c.name == "crystal").mosaic == 60
-    inst = build_instrument(cfg, sample=la2ni7(mosaic=30), input_path=tmp_path)
-    assert next(c for c in inst.component_list if c.name == "crystal").mosaic == 30
+    crystal = next(c for c in inst.component_list if c.name == "crystal")
+    assert crystal.mosaic == 60 and cfg.crystal.reflections in crystal.reflections
+    assert Path(
+        crystal.reflections.strip('"')
+    ).is_absolute()  # McStas gets the full path of the CIF
+    assert crystal.xwidth == cfg.crystal.size

@@ -51,9 +51,7 @@ def plot_scan_2d(
     ax.set_xlabel("2θ (deg)")
     ax.set_ylabel("height y (m)")
     ax.grid(alpha=0.6)
-    ax.set_title(
-        f"{scan_par} = {points[0][0][scan_par]:g}°"
-    )  # reserve room before tight_layout
+    ax.set_title(f"{scan_par} = {points[0][0][scan_par]:g}°")  # reserve room before tight_layout
     fig.tight_layout()
 
     def draw(i):

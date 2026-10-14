@@ -24,7 +24,6 @@ from .components import (
     Slit,
     Source_simple,
 )
-from ..samples import Sample
 from .params import ControlParam, DesignParam
 
 PLACEMENT = (
@@ -44,8 +43,7 @@ class SingleCrystalDiffractometer:
     """The components, one field each in the order of the beam (the order they are built, each one
     knows where it sits; its field name is its name, the one that a `relative` refers to), and the
     control parameters (`controls`, the McStas instrument parameters). `components` gives them as
-    a dict by name. The `sample` is optional and is not one of the design parameters: `to_dict` and
-    `from_dict` leave it out.
+    a dict by name.
 
     Where a component takes a number (or a list of them, as `at` and `rotated`), it may be given
     the name of a control parameter instead, or an expression of them ("-chi"), as in McStas.
@@ -65,7 +63,6 @@ class SingleCrystalDiffractometer:
     crystal: Single_crystal
     detector: Monitor_nD
     controls: ControlParam = field(default_factory=lambda: ControlParam({}, {}, {}))
-    sample: Sample | None = None  # the crystal to simulate; None: the simulation's default
 
     @property
     def components(self) -> dict[str, Component]:
@@ -95,9 +92,7 @@ class SingleCrystalDiffractometer:
             for f in fields(c):
                 value = getattr(c, f.name)
                 if value is None and f.name not in c.OPTIONAL:
-                    raise ValueError(
-                        f"Config value {name}.{f.name} is unresolved (null)"
-                    )
+                    raise ValueError(f"Config value {name}.{f.name} is unresolved (null)")
                 if not _takes_numbers(f):
                     continue
                 for item in value if isinstance(value, list) else [value]:

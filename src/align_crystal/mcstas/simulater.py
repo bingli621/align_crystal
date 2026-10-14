@@ -37,16 +37,13 @@ def _run_scan(inst, scans):
     McStasScript's parameters only take numbers, so the ranges are given to mcrun directly."""
     inst.write_full_instrument()  # compiles in OUTPUT_DIR
     params = {p.name: p.value for p in inst.parameters if p.name not in scans}
-    options = dict(
-        inst._run_settings, parameters=params | scans, output_path=inst.output_path
-    )
+    options = dict(inst._run_settings, parameters=params | scans, output_path=inst.output_path)
     ManagedMcrun(inst.name + ".instr", **options).run_simulation()
 
 
 def run(
     output_path=OUTPUT_DIR / "latest",
     ncount=1e7,
-    sample=None,
     config=None,
     seed=None,
     mpi="auto",
@@ -58,7 +55,7 @@ def run(
     (deg, 0 if not given). Output goes to `output_path/mccode.h5`. `custom_flags` is passed to
     mcrun; with "-N 3" a control given as "min,max" (e.g. omega="3,5") is scanned over 3 points."""
     shutil.rmtree(output_path, ignore_errors=True)  # always start from a clean folder
-    inst = build_instrument(_instrument(config), sample=sample)
+    inst = build_instrument(_instrument(config))
     inst.settings(
         output_path=str(output_path),
         ncount=ncount,
@@ -78,9 +75,7 @@ def run(
     return Path(output_path) / "mccode.h5"
 
 
-def dump_beam(
-    output_path=OUTPUT_DIR / "beam", ncount=1e8, mpi="auto", config=None, **controls
-):
+def dump_beam(output_path=OUTPUT_DIR / "beam", ncount=1e8, mpi="auto", config=None, **controls):
     """Part 1 of a split run: simulate source -> slit -> incident monitor -> `sample_pos` and dump
     the beam to an MCPL file. Run it once with a large `ncount`. Returns the path of the beam file
     (`<output_path>/beam.mcpl.gz`); the folder also has `mccode.h5` with the incident monitor.
@@ -92,9 +87,7 @@ def dump_beam(
     """
     output_path = Path(output_path)
     shutil.rmtree(output_path, ignore_errors=True)
-    output_path.parent.mkdir(
-        parents=True, exist_ok=True
-    )  # mcrun does not create parent folders
+    output_path.parent.mkdir(parents=True, exist_ok=True)  # mcrun does not create parent folders
     inst = build_instrument(_instrument(config))
     if _set_controls(inst, config, controls):
         raise ValueError("dump_beam does not scan: give numbers, not ranges")
@@ -121,7 +114,6 @@ def run_from_beam(
     omegas,
     beam_file=OUTPUT_DIR / "beam" / "beam.mcpl.gz",
     output_path=OUTPUT_DIR / "split",
-    sample=None,
     config=None,
     n_jobs=None,
     seed=None,
@@ -146,13 +138,9 @@ def run_from_beam(
     shutil.rmtree(output_path, ignore_errors=True)
     output_path.mkdir(parents=True)  # mcrun does not create missing parent folders
     omegas = list(omegas)
-    seed = (
-        int(np.random.SeedSequence().generate_state(1)[0] % 10**9)
-        if seed is None
-        else seed
-    )
+    seed = int(np.random.SeedSequence().generate_state(1)[0] % 10**9) if seed is None else seed
 
-    inst = build_instrument(_instrument(config), sample=sample)
+    inst = build_instrument(_instrument(config))
     inst.run_from("sample_pos", filename=f'"{beam_file}"')
     inst.settings(
         output_path=str(output_path),
@@ -197,16 +185,17 @@ def run_from_beam(
 
 if __name__ == "__main__":
     # Edit the settings below and run this file (e.g. with VS Code's ▶ button).
-    from align_crystal.samples import la2ni7
+    from align_crystal.core import build_diffractometer, la2ni7
 
-    diffractometer = SingleCrystalDiffractometer.from_file()
+    # the sample is the crystal, in the innermost goniometer arm
+    crystal = la2ni7(mosaic=60, at=[0, 0, 0], relative="gonio_phi")
+    diffractometer = build_diffractometer(crystal)
     MODE = "from_beam"  # "full": one run | "dump": split part 1 | "from_beam": split part 2
 
     if MODE == "full":
         h5_file = run(
             config=diffractometer,
             ncount=1e6,
-            sample=la2ni7(mosaic=60),
             energy_meV=14,
             omega="-48,73",  # scan omega
             chi=-5.893,
@@ -219,7 +208,6 @@ if __name__ == "__main__":
     elif MODE == "from_beam":
         h5_file = run_from_beam(
             omegas=range(-48, 74),
-            sample=la2ni7(mosaic=60),
             config=diffractometer,
             energy_meV=14,
             chi=-5.893,

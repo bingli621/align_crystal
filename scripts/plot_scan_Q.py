@@ -49,10 +49,7 @@ def plot_scan_Q(
         ]
     else:
         points = read_scan(folder)
-    qs = [
-        to_sample_frame(to_Q(ev, wavelength(p["energy_meV"])), p)
-        for p, ev in points
-    ]
+    qs = [to_sample_frame(to_Q(ev, wavelength(p["energy_meV"])), p) for p, ev in points]
 
     # common Qx/Qz range so frames are comparable
     qx_all = np.concatenate([q.coords["Qx_sample"].values for q in qs])
@@ -95,9 +92,7 @@ def plot_scan_Q(
     ax.set_ylabel("Qz sample (1/Å)")
     ax.set_aspect("equal")
     ax.grid(alpha=0.6)
-    ax.set_title(
-        f"{scan_par} = {points[0][0][scan_par]:g}°"
-    )  # reserve room before tight_layout
+    ax.set_title(f"{scan_par} = {points[0][0][scan_par]:g}°")  # reserve room before tight_layout
     fig.tight_layout()
 
     def draw(i):

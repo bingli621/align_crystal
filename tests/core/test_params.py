@@ -49,3 +49,12 @@ def test_complete_raises_on_a_control_that_is_not_set():
     with pytest.raises(ValueError, match="not set: e$"):
         controls.complete()
     assert controls.replace(e=14).complete()["e"] == 14
+
+
+def test_from_controls_makes_the_same_as_the_controls_section():
+    from align_crystal.core import Control
+
+    made = ControlParam.from_controls(a=Control(None, "m", "length"), b=Control(1.0))
+    assert made == ControlParam.from_dict(
+        {"a": {"value": None, "unit": "m", "comment": "length"}, "b": {"value": 1.0}}
+    )

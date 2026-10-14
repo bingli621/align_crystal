@@ -27,3 +27,13 @@ def test_the_sample_sets_the_crystal(tmp_path, diffractometer):
     inst = build_instrument(diffractometer(), sample=sample, input_path=tmp_path)
     crystal = next(c for c in inst.component_list if c.name == "crystal")
     assert crystal.mosaic == 60 and sample.reflections in crystal.reflections
+
+
+def test_the_sample_of_the_diffractometer_is_used_unless_one_is_given(tmp_path, diffractometer):
+    cfg = diffractometer()
+    assert cfg.sample is None  # the default: aluminium in the builder
+    cfg.sample = la2ni7(mosaic=60)
+    inst = build_instrument(cfg, input_path=tmp_path)
+    assert next(c for c in inst.component_list if c.name == "crystal").mosaic == 60
+    inst = build_instrument(cfg, sample=la2ni7(mosaic=30), input_path=tmp_path)
+    assert next(c for c in inst.component_list if c.name == "crystal").mosaic == 30

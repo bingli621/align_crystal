@@ -114,8 +114,9 @@ _CONFIGURE = {
 
 def build_instrument(config, sample=None, input_path=OUTPUT_DIR):
     """Return a McStasScript instrument with the components of `config` (a
-    `SingleCrystalDiffractometer`) added in their order."""
-    sample = sample or aluminium()
+    `SingleCrystalDiffractometer`) added in their order. The crystal is `sample` if given, else
+    `config.sample`, else aluminium."""
+    sample = sample or config.sample or aluminium()  # a given one, the diffractometer's, aluminium
     Path(input_path).mkdir(parents=True, exist_ok=True)
     inst = instr.McStas_instr(config.name, input_path=str(input_path))
     _add_instrument_parameters(inst, config)

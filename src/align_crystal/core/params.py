@@ -65,6 +65,16 @@ class DesignParam:
 
 
 @dataclass(frozen=True)
+class Control:
+    """One control parameter: its start value (None = not set yet: every run sets it), unit and
+    comment."""
+
+    value: object
+    unit: str = ""
+    comment: str = ""
+
+
+@dataclass(frozen=True)
 class ControlParam:
     """The control parameters of an instrument or of one run: each McStas instrument parameter by
     name, with its value (None = not set yet: every run sets it), unit and comment."""
@@ -86,6 +96,15 @@ class ControlParam:
             {name: e["value"] for name, e in data.items()},
             {name: e.get("unit", "") for name, e in data.items()},
             {name: e.get("comment", "") for name, e in data.items()},
+        )
+
+    @classmethod
+    def from_controls(cls, **controls: Control):
+        """The control parameters made of one `Control` each, by McStas name, in order."""
+        return cls(
+            {name: c.value for name, c in controls.items()},
+            {name: c.unit for name, c in controls.items()},
+            {name: c.comment for name, c in controls.items()},
         )
 
     def to_dict(self) -> dict:

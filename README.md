@@ -77,14 +77,14 @@ h5 = run(config=SingleCrystalDiffractometer.from_file("my_params.yaml"), energy_
 A diffractometer can be created in these ways:
 
 ```python
-from align_crystal.core import SingleCrystalDiffractometer
+from align_crystal.core import SingleCrystalDiffractometer, build_diffractometer
 from align_crystal.yaml_io import yaml_loader, write_yaml
 
 d = SingleCrystalDiffractometer.from_file("my_params.yaml")   # from a file, read with a loader (YAML by default)
 d = SingleCrystalDiffractometer.from_file()                   # the default file, core/params.yaml
 d = SingleCrystalDiffractometer.from_file("my_params.yaml", yaml_loader)   # the same, with the loader given explicitly
 d = SingleCrystalDiffractometer.from_dict(yaml_loader("my_params.yaml"))    # or in two steps; any dict works
-d = SingleCrystalDiffractometer.from_parameters()          # the default one, its components made in code
+d = build_diffractometer()                               # the default one, its components made in code (core/builder.py)
 write_yaml(d.to_dict(), "copy.yaml")                       # save its design parameters, to be read back by the first two
 ```
 

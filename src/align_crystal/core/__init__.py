@@ -5,6 +5,7 @@ diffractometer.py  SingleCrystalDiffractometer: its components, each knowing whe
 params.py          DesignParam: the design parameters, as one nested dict;
                    ControlParam: the control parameters (McStas instrument parameters) it declares
 params.yaml        the default parameters, in beam order
+builder.py         build_diffractometer(): the same defaults, made in code
 """
 
 from .components import (
@@ -18,13 +19,16 @@ from .components import (
     Source_simple,
 )
 from .diffractometer import SingleCrystalDiffractometer
-from .params import ControlParam, DesignParam
+from .builder import build_diffractometer
+from .params import Control, ControlParam, DesignParam
 
 __all__ = [
     "Arm",
     "Component",
+    "Control",
     "ControlParam",
     "DesignParam",
+    "build_diffractometer",
     "Monitor",
     "Monitor_nD",
     "Progress_bar",

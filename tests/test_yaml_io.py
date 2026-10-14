@@ -1,4 +1,4 @@
-from align_crystal.core import SingleCrystalDiffractometer
+from align_crystal.core import SingleCrystalDiffractometer, build_diffractometer
 from align_crystal.yaml_io import yaml_loader, write_yaml
 
 
@@ -9,7 +9,7 @@ def test_write_then_read_gives_the_same_dict(tmp_path):
 
 
 def test_the_default_file_makes_the_diffractometer_that_the_code_makes():
-    assert SingleCrystalDiffractometer.from_file() == SingleCrystalDiffractometer.from_parameters()
+    assert SingleCrystalDiffractometer.from_file() == build_diffractometer()
 
 
 def test_the_diffractometer_roundtrips_through_a_yaml_file(diffractometer, tmp_path):

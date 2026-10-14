@@ -10,7 +10,7 @@ class Source_simple(Component):
     """A monochromatic source."""
 
     radius: float  # m
-    focus_on: str  # role of the component the source focuses on
+    focus_on: str  # name of the component the source focuses on
     dist: float | None  # source -> focus plane, m; None = z of `focus_on` in the source frame
     flux: float
     energy_meV: float  # meV, or the name of the control parameter that gives it

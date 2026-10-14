@@ -2,8 +2,8 @@
 
 DesignParam: the parameters of an instrument, as one complete nested dict: what a parameters file
 holds, and the only thing read from or written to one. `name`; `controls`, the control parameters
-the instrument declares (see below); and one section per role, in the order of the instrument,
-with its `component` (its kind, e.g. "Slit"), its parameters, and last where it sits: `at`,
+the instrument declares (see below); and one section per component name, in the order of the instrument,
+with its `component` (the McStas component name, e.g. "Slit"), its parameters, and last where it sits: `at`,
 `rotated` and `relative`. Nothing is merged in from defaults. Where a value is null, the component
 derives it itself (the components never see the `DesignParam`). Where the dict comes from (a YAML
 file, code, ...) is not the entities' business.
@@ -31,31 +31,32 @@ class DesignParam:
     def __getitem__(self, key):
         return self.data[key]
 
-    def make(self, kind, role):
-        """The component `kind` of `role`, made from its section (without its `component`)."""
-        section = {k: v for k, v in self.data[role].items() if k != "component"}
+    def make(self, component_class, name):
+        """The component `name` of `component_class`, made from its section (without its
+        `component`)."""
+        section = {k: v for k, v in self.data[name].items() if k != "component"}
         try:
-            return kind(**section)
+            return component_class(**section)
         except TypeError as error:  # a missing or unknown parameter
-            raise ValueError(f"Bad parameters for {role!r}: {error}") from None
+            raise ValueError(f"Bad parameters for {name!r}: {error}") from None
 
-    def make_components(self, kinds: dict) -> dict:
-        """The components, keyed by role, in the order of their sections (every key but `name`
-        and `controls`); each is the kind its section's `component` names: `kinds` maps the name
-        of a kind (e.g. "Slit") to its class. Raises on a section that is not one or has no known
+    def make_components(self, classes: dict) -> dict:
+        """The components, keyed by name, in the order of their sections (every key but `name`
+        and `controls`); each is the class its section's `component` (the component name) names:
+        `classes` maps a component name (e.g. "Slit") to its class. Raises on a section that is not one or has no known
         `component`."""
         components = {}
-        for role, section in self.data.items():
-            if role in ("name", "controls"):
+        for name, section in self.data.items():
+            if name in ("name", "controls"):
                 continue
             if not isinstance(section, dict):
-                raise ValueError(f"Unknown config key: {role} (not a section)")
-            kind = section.get("component")
-            if kind is None:
-                raise ValueError(f"No component in the section of {role!r}")
-            if kind not in kinds:
-                raise ValueError(f"Unknown component {kind!r} for {role!r}")
-            components[role] = self.make(kinds[kind], role)
+                raise ValueError(f"Unknown config key: {name} (not a section)")
+            component_name = section.get("component")
+            if component_name is None:
+                raise ValueError(f"No component in the section of {name!r}")
+            if component_name not in classes:
+                raise ValueError(f"Unknown component {component_name!r} for {name!r}")
+            components[name] = self.make(classes[component_name], name)
         return components
 
     def control_param(self) -> "ControlParam":

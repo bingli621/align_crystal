@@ -1,4 +1,4 @@
-"""The building blocks of an instrument: one dataclass per kind of component.
+"""The building blocks of an instrument: one dataclass per McStas component.
 
 They carry no defaults of their own (see core/params.yaml) and know nothing about files or
 McStas. A value a component can calculate from its own other values is derived in `__post_init__`
@@ -16,7 +16,7 @@ from .detector import Monitor, Monitor_nD
 from .sample import Single_crystal
 from .source import Source_simple
 
-# every kind of component by its McStas name: what a section's `component:` in a parameters file refers to
+# every component class by its McStas component name: what a section's `component:` in a parameters file refers to
 COMPONENTS = {
     c.__name__: c
     for c in (

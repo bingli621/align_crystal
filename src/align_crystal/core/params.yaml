@@ -12,11 +12,11 @@ controls:
   chi:        {value: 0.0,  unit: deg, comment: goniometer rotation about -Z}
   phi:        {value: 0.0,  unit: deg, comment: goniometer rotation about +X}
 
-# One section per role, in the order of the beam: the order in which the components are built (a
+# One section per component name, in the order of the beam: the order in which the components are built (a
 # component can only be relative to one before it). Each has its `component` (the McStas component,
 # the class of the same name in core/components/), its parameters, and last where it sits: McStas
-# AT (m), ROTATED (deg; numbers or control parameter names) and RELATIVE (a role; null = absolute).
-# The role is also the instance name in McStas; add `name: other` to a section to give it another.
+# AT (m), ROTATED (deg; numbers or control parameter names) and RELATIVE (a component name; null = absolute).
+# The name is also the instance name in McStas.
 origin:
   component: Progress_bar
   at: [0, 0, 0]
@@ -34,7 +34,7 @@ source:                # monochromatic
   rotated: null
   relative: origin
 
-slit1:
+slit:
   component: Slit
   size: 0.01           # opening and source focus (x and y), m
   at: [0, 0, 1.0]

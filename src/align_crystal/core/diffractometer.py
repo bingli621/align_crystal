@@ -40,9 +40,10 @@ def _takes_numbers(f) -> bool:
 
 @dataclass(kw_only=True)
 class SingleCrystalDiffractometer:
-    """All the components, keyed by role, in the order they are built (each one knows where it
-    sits), and the control parameters (`controls`, the McStas instrument parameters). A component
-    is also reachable as an attribute: `d.source` is `d.components["source"]`.
+    """The components, one field each in the order of the beam (the order they are built, each one
+    knows where it sits; its field name is its name, the one that a `relative` refers to), and the
+    control parameters (`controls`, the McStas instrument parameters). `components` gives them as
+    a dict by name.
 
     Where a component takes a number (or a list of them, as `at` and `rotated`), it may be given
     the name of a control parameter instead, or an expression of them ("-chi"), as in McStas.
@@ -51,33 +52,48 @@ class SingleCrystalDiffractometer:
     PARAMS_FILE: ClassVar = Path(__file__).parent / "params.yaml"  # the default parameters
 
     name: str
-    components: dict[str, Component]
+    origin: Progress_bar
+    source: Source_simple
+    slit: Slit
+    incident_monitor: Monitor
+    sample_pos: Arm
+    gonio_omega: Arm
+    gonio_chi: Arm
+    gonio_phi: Arm
+    crystal: Single_crystal
+    detector: Monitor_nD
     controls: ControlParam = field(default_factory=lambda: ControlParam({}, {}, {}))
 
+    @property
+    def components(self) -> dict[str, Component]:
+        """The components by name, in the order of the beam."""
+        return {
+            f.name: getattr(self, f.name)
+            for f in fields(self)
+            if isinstance(getattr(self, f.name), Component)
+        }
+
     def __post_init__(self):
-        """Name each component without a `name` by its role, and derive the source focus distance:
-        unless `dist` is given, it is the z of the component it focuses on (`focus_on`, placed
+        """Derive the source focus distance: unless `dist` is given, it is the z of the component it focuses on (`focus_on`, placed
         relative to the source). Then raise if a value that is not optional is still null, if a
-        control has the name of a role, and if a component uses a name that is not a control."""
-        for role, c in self.components.items():
-            c.name = c.name or role
-        source = self.components["source"]
-        if source.dist is None:
-            if source.focus_on not in self.components:
+        control has the name of a component, and if a component uses a name that is not a control."""
+        if self.source.dist is None:
+            if source_focus := self.components.get(self.source.focus_on):
+                self.source.dist = source_focus.at[2]
+            else:
                 raise ValueError(
-                    f"The source focuses on {source.focus_on!r}, which is not a component"
+                    f"The source focuses on {self.source.focus_on!r}, which is not a component"
                 )
-            source.dist = self.components[source.focus_on].at[2]
 
         for name in self.controls:
             if name in self.components:
-                raise ValueError(f"The control parameter {name!r} is also a role")
-        for role, c in self.components.items():
+                raise ValueError(f"The control parameter {name!r} is also a component name")
+        for name, c in self.components.items():
             for f in fields(c):
                 value = getattr(c, f.name)
                 if value is None and f.name not in c.OPTIONAL:
                     raise ValueError(
-                        f"Config value {role}.{f.name} is unresolved (null)"
+                        f"Config value {name}.{f.name} is unresolved (null)"
                     )
                 if not _takes_numbers(f):
                     continue
@@ -87,26 +103,23 @@ class SingleCrystalDiffractometer:
                     for word in re.findall(r"[A-Za-z_]\w*", item):
                         if word not in self.controls:
                             raise ValueError(
-                                f"{role}.{f.name} uses {word!r}, which is not a control parameter"
+                                f"{name}.{f.name} uses {word!r}, which is not a control parameter"
                             )
-
-    def __getattr__(self, role):
-        try:
-            return self.__dict__["components"][role]
-        except KeyError:
-            raise AttributeError(role) from None
 
     @classmethod
     def from_dict(cls, data: dict):
         """The diffractometer of the complete nested dict `data` (see `DesignParam`), with the
-        layout of params.yaml: it says everything, including which components there are and in
-        which order, and the control parameters. Missing and unknown keys raise a ValueError."""
+        layout of params.yaml. The order of its sections does not matter (the order of the beam is
+        that of the fields). Missing and unknown keys raise a ValueError."""
         design = DesignParam(data)
-        return cls(
-            name=design["name"],
-            components=design.make_components(COMPONENTS),
-            controls=design.control_param(),
-        )
+        try:
+            return cls(
+                name=design["name"],
+                controls=design.control_param(),
+                **design.make_components(COMPONENTS),
+            )
+        except TypeError as error:  # a missing or unknown component
+            raise ValueError(f"Bad components: {error}") from None
 
     @classmethod
     def from_file(cls, file=None, loader=None):
@@ -129,8 +142,9 @@ class SingleCrystalDiffractometer:
             "chi": {"value": 0.0, "unit": "deg", "comment": "goniometer rotation about -Z"},
             "phi": {"value": 0.0, "unit": "deg", "comment": "goniometer rotation about +X"},
         }
-        # the components in the order of the beam, keyed by role
-        components = dict(
+        return cls(
+            name="align_crystal_diffractometer",
+            controls=ControlParam.from_dict(controls),
             origin=Progress_bar(at=[0, 0, 0]),
             source=Source_simple(
                 energy_meV="energy_meV",  # the control parameter
@@ -141,7 +155,7 @@ class SingleCrystalDiffractometer:
                 at=[0, 0, 0],
                 relative="origin",
             ),
-            slit1=Slit(size=0.01, at=[0, 0, 1.0], relative="source"),  # opening = source focus
+            slit=Slit(size=0.01, at=[0, 0, 1.0], relative="source"),  # opening = source focus
             # integrated incident intensity, 10 cm before the sample; the neutrons carry on
             incident_monitor=Monitor(at=[0, 0, 1.9], relative="source"),
             # the beam hits the goniometer centre; it can be dumped here
@@ -168,11 +182,6 @@ class SingleCrystalDiffractometer:
                 relative="sample_pos",
             ),
         )
-        return cls(
-            name="align_crystal_diffractometer",
-            components=components,
-            controls=ControlParam.from_dict(controls),
-        )
 
     def control_param(self, **values) -> ControlParam:
         """The control parameters of a run: `controls`, with `values` (McStas name -> value) in
@@ -182,12 +191,12 @@ class SingleCrystalDiffractometer:
 
     def to_dict(self):
         """The nested dict `from_dict` takes. Each section has its `component`, its parameters
-        (unset optional ones, a `name`, left out), and last `at`, `rotated`, `relative`."""
+        (unset optional ones left out), and last `at`, `rotated`, `relative`."""
         sections = {}
-        for role, c in self.components.items():
+        for name, c in self.components.items():
             values = asdict(c)
             placement = {k: values.pop(k) for k in PLACEMENT}
-            sections[role] = {
+            sections[name] = {
                 "component": type(c).__name__,
                 **{k: v for k, v in values.items() if v is not None},
                 **placement,

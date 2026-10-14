@@ -1,6 +1,6 @@
 """The entities: the diffractometer is a set of components (no McStas knowledge).
 
-components/        the kinds of component, one dataclass each (misc.py, source.py, detector.py, sample.py)
+components/        the components, one dataclass each (misc.py, source.py, detector.py, sample.py)
 diffractometer.py  SingleCrystalDiffractometer: its components, each knowing where it sits
 params.py          DesignParam: the design parameters, as one nested dict;
                    ControlParam: the control parameters (McStas instrument parameters) it declares

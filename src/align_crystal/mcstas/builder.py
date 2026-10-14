@@ -41,19 +41,11 @@ def _add_instrument_parameters(inst, cfg):
         )
 
 
-def _name(cfg, role):
-    """McStas instance name of a component: its configured `name`, else its role."""
-    return getattr(cfg, role).name or role
-
-
-def _place(inst, cfg, role):
-    """Add component `role`: the McStas component is its class name, the position its
+def _place(inst, name, c):
+    """Add component `c` as `name`: the McStas component is its class name, the position its
     at/rotated/relative."""
-    c = getattr(cfg, role)
-    rel = _name(cfg, c.relative) if c.relative else None
-    comp = inst.add_component(
-        _name(cfg, role), type(c).__name__, RELATIVE=rel or "ABSOLUTE"
-    )
+    rel = c.relative
+    comp = inst.add_component(name, type(c).__name__, RELATIVE=rel or "ABSOLUTE")
     kw = {"RELATIVE": rel} if rel else {}
     comp.set_AT(list(c.at), **kw)
     if c.rotated is not None:
@@ -62,7 +54,7 @@ def _place(inst, cfg, role):
 
 
 def _configure_source(comp, c, cfg, sample):
-    size = cfg.slit1.size  # the source focuses on the slit opening
+    size = cfg.slit.size  # the source focuses on the slit opening
     comp.radius = c.radius
     comp.dist = c.dist
     comp.focus_xw = size
@@ -79,8 +71,8 @@ def _configure_slit(comp, c, cfg, sample):
 
 def _configure_monitor(comp, c, cfg, sample):
     """Integrated incident intensity, twice the slit opening; the neutrons carry on."""
-    comp.xwidth = 2 * cfg.slit1.size
-    comp.yheight = 2 * cfg.slit1.size
+    comp.xwidth = 2 * cfg.slit.size
+    comp.yheight = 2 * cfg.slit.size
     comp.restore_neutron = 1
 
 
@@ -110,7 +102,7 @@ def _configure_detector(comp, c, cfg, sample):
     comp.restore_neutron = 1
 
 
-# how each kind of component sets its McStas parameters; the others (Progress_bar, Arm) have none
+# how each component sets its McStas parameters; the others (Progress_bar, Arm) have none
 _CONFIGURE = {
     Source_simple: _configure_source,
     Slit: _configure_slit,
@@ -127,13 +119,8 @@ def build_instrument(config, sample=None, input_path=OUTPUT_DIR):
     Path(input_path).mkdir(parents=True, exist_ok=True)
     inst = instr.McStas_instr(config.name, input_path=str(input_path))
     _add_instrument_parameters(inst, config)
-    for (
-        role,
-        c,
-    ) in (
-        config.components.items()
-    ):  # in order: McStas positions are relative to earlier ones
-        comp = _place(inst, config, role)
+    for name, c in config.components.items():  # in order: McStas positions are relative to earlier ones
+        comp = _place(inst, name, c)
         if type(c) in _CONFIGURE:
             _CONFIGURE[type(c)](comp, c, config, sample)
     return inst

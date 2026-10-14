@@ -10,21 +10,17 @@ def test_the_default_file_names_the_components_in_beam_order(diffractometer):
     cfg = diffractometer()
     assert type(cfg) is Diffractometer
     assert list(cfg.components) == [
-        "origin", "source", "slit1", "incident_monitor", "sample_pos",
+        "origin", "source", "slit", "incident_monitor", "sample_pos",
         "gonio_omega", "gonio_chi", "gonio_phi", "crystal", "detector",
     ]  # fmt: skip
-    assert cfg.slit1 is cfg.components["slit1"] and cfg.slit1.name == "slit1"  # named by role
-
-
-def test_a_name_in_the_section_wins_over_the_role(diffractometer):
-    assert diffractometer({"slit1": {"name": "other"}}).slit1.name == "other"
+    assert cfg.slit is cfg.components["slit"]
 
 
 def test_from_dict_then_to_dict_roundtrip(diffractometer):
     cfg = diffractometer()
     data = cfg.to_dict()
     assert list(data)[:3] == ["name", "controls", "origin"]
-    assert list(data["slit1"]) == ["component", "name", "size", "at", "rotated", "relative"]
+    assert list(data["slit"]) == ["component", "size", "at", "rotated", "relative"]
     assert Diffractometer.from_dict(data) == cfg
 
 
@@ -53,8 +49,8 @@ def test_the_source_focusing_on_nothing_raises(diffractometer):
 
 
 def test_a_null_that_cannot_be_derived_raises(diffractometer):
-    with pytest.raises(ValueError, match="slit1.size"):
-        diffractometer({"slit1": {"size": None}})
+    with pytest.raises(ValueError, match="slit.size"):
+        diffractometer({"slit": {"size": None}})
 
 
 def test_the_control_parameters_of_the_diffractometer(diffractometer):
@@ -80,8 +76,8 @@ def test_the_file_declares_the_controls_and_the_source_names_its_energy(diffract
 
 
 def test_a_component_naming_an_unknown_control_raises(diffractometer):
-    with pytest.raises(ValueError, match="slit1.size uses 'widht'"):
-        diffractometer({"slit1": {"size": "widht"}})
+    with pytest.raises(ValueError, match="slit.size uses 'widht'"):
+        diffractometer({"slit": {"size": "widht"}})
     with pytest.raises(ValueError, match="gonio_chi.rotated uses 'chii'"):
         diffractometer({"gonio_chi": {"rotated": [0, 0, "-chii"]}})
 
@@ -96,8 +92,8 @@ def test_a_control_needs_a_value_and_no_unknown_keys(diffractometer):
 
 
 def test_a_control_named_like_a_role_raises(diffractometer):
-    with pytest.raises(ValueError, match="'slit1' is also a role"):
-        diffractometer({"controls": {"slit1": {"value": 1}}})
+    with pytest.raises(ValueError, match="'slit' is also a component name"):
+        diffractometer({"controls": {"slit": {"value": 1}}})
 
 
 def test_core_imports_no_yaml_and_no_adapter():
@@ -108,3 +104,13 @@ def test_core_imports_no_yaml_and_no_adapter():
         "assert not bad, bad"
     )
     subprocess.run([sys.executable, "-c", code], check=True)
+
+
+def test_the_components_are_fixed_a_missing_or_unknown_one_raises(diffractometer):
+    data = diffractometer().to_dict()
+    extra = {**data, "slit2": data["slit"]}
+    with pytest.raises(ValueError, match="slit2"):
+        Diffractometer.from_dict(extra)
+    missing = {k: v for k, v in data.items() if k != "detector"}
+    with pytest.raises(ValueError, match="detector"):
+        Diffractometer.from_dict(missing)

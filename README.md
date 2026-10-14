@@ -10,7 +10,7 @@ tools to read the McStas NeXus output (McStasToX, scippneutron) and convert to m
 ```
 src/align_crystal/   the library (installed)
   core/         the entities: the diffractometer is a set of components (no McStas knowledge)
-    components/       the kinds of component, one dataclass each, named after the McStas component
+    components/       the components, one dataclass each, named after the McStas component
                       (misc.py: Component, Progress_bar, Slit, Arm; source.py: Source_simple;
                        detector.py: Monitor, Monitor_nD; sample.py: Single_crystal)
     diffractometer.py SingleCrystalDiffractometer: its components, each recording where it sits, and its
@@ -37,7 +37,7 @@ path to a dict) is given. `mcstas` simulates a `SingleCrystalDiffractometer` tha
 ## Configuration
 
 All the parameters of the diffractometer are in one complete file,
-`src/align_crystal/core/params.yaml`, with its `controls` (the control parameters, see below) and one section per role, in the order of the
+`src/align_crystal/core/params.yaml`, with its `controls` (the control parameters, see below) and one section per component name, in the order of the
 instrument: its `component` (the McStas component), its parameters, and last where it sits (`at`,
 `rotated`, `relative`). To change something,
 copy the file, edit it and load the copy (or edit the dict: `from_dict(data)`). Unknown or missing keys are errors.
@@ -62,7 +62,7 @@ source:
   radius: 0.02
 detector:
   n_theta: 600
-slit1:
+slit:
   at: [0, 0, 1.2]
 ```
 
@@ -73,8 +73,6 @@ from align_crystal.core import SingleCrystalDiffractometer
 # config: the diffractometer to simulate
 h5 = run(config=SingleCrystalDiffractometer.from_file("my_params.yaml"), energy_meV=14, omega="-48,73", custom_flags="-N 122")  # scan omega
 ```
-
-A component can get another McStas instance name with `name: other` in its section.
 
 A diffractometer can be created in these ways:
 

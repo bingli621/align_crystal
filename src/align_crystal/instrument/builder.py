@@ -11,14 +11,13 @@ from .components import (
     Slit,
     Source_simple,
 )
-from .components.sample import aluminium
-from .diffractometer import SingleCrystalDiffractometer
-from .params import Control, ControlParam
+from .model.diffractometer import SingleCrystalDiffractometer
+from .model.params import Control, ControlParam
 
 
 def build_diffractometer(crystal: Single_crystal | None = None) -> SingleCrystalDiffractometer:
     """The default diffractometer, with `crystal` (a `Single_crystal`, e.g.
-    `la2ni7(at=[0, 0, 0], relative="gonio_phi")`) as its sample, as it is; None: aluminium."""
+    `la2ni7(at=[0, 0, 0], relative="gonio_phi")`) as its sample, as it is; None: no sample."""
     # the control parameters (McStas instrument parameters); a value None: every run sets it
     energy_meV = Control(None, "meV", "neutron energy (monochromatic)")
     omega = Control(0.0, "deg", "goniometer rotation about +Y")
@@ -28,7 +27,7 @@ def build_diffractometer(crystal: Single_crystal | None = None) -> SingleCrystal
     # the components, in the order of the beam
     origin = Progress_bar(at=[0, 0, 0])
     source = Source_simple(
-        energy_meV="energy_meV",  # the control parameter
+        E0="energy_meV",  # the control parameter
         radius=0.03,
         focus_on="sample_pos",  # the component the source focuses on
         dist=None,  # source -> focus plane: derived from focus_on
@@ -36,7 +35,9 @@ def build_diffractometer(crystal: Single_crystal | None = None) -> SingleCrystal
         at=[0, 0, 0],
         relative="origin",
     )
-    slit = Slit(size=0.01, at=[0, 0, 1.0], relative="source")  # opening = source focus
+    slit = Slit(
+        xwidth=0.01, yheight=0.01, at=[0, 0, 1.0], relative="source"
+    )  # opening = source focus
     # integrated incident intensity, 10 cm before the sample; the neutrons carry on
     incident_monitor = Monitor(at=[0, 0, 1.9], relative="source")
     # the beam hits the goniometer centre; it can be dumped here
@@ -45,12 +46,10 @@ def build_diffractometer(crystal: Single_crystal | None = None) -> SingleCrystal
     gonio_omega = Arm(at=[0, 0, 0], rotated=[0, "omega", 0], relative="sample_pos")  # about +Y
     gonio_chi = Arm(at=[0, 0, 0], rotated=[0, 0, "-chi"], relative="gonio_omega")  # about -Z
     gonio_phi = Arm(at=[0, 0, 0], rotated=["phi", 0, 0], relative="gonio_chi")  # about +X
-    # the sample, in the innermost goniometer arm: swap it for another crystal
-    crystal = crystal or aluminium(at=[0, 0, 0], relative="gonio_phi")
     # cylindrical ("banana") detector around the vertical axis through the sample
     detector = Monitor_nD(
         radius=1.0,
-        height=0.5,
+        yheight=0.5,
         two_theta_range=[-125.0, -5.0],  # signed: negative = right of the beam
         n_theta=1200,
         n_y=50,
@@ -69,6 +68,6 @@ def build_diffractometer(crystal: Single_crystal | None = None) -> SingleCrystal
         gonio_omega=gonio_omega,
         gonio_chi=gonio_chi,
         gonio_phi=gonio_phi,
-        crystal=crystal,
+        crystal=crystal,  # the sample, in the innermost goniometer arm; None: none
         detector=detector,
     )

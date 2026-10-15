@@ -4,7 +4,7 @@ Lab frame (McStas): z along the beam, y up, x to the left of the beam.
 
 Ready-made crystals: each function gives a `Single_crystal` of its own lattice and orientation;
 `params` are the crystal's other parameters, or ones to change, e.g.
-`la2ni7(mosaic=60, at=[0, 0, 0], relative="gonio_phi")`. A CIF file is in core/cif/ (a plain
+`la2ni7(mosaic=60, at=[0, 0, 0], relative="gonio_phi")`. A CIF file is in instrument/cif/ (a plain
 folder), and `reflections` names it relative to `CIF_DIR`, so a saved parameters file is
 portable.
 """
@@ -24,7 +24,7 @@ class Single_crystal(Component):
     """A cube of a single crystal of `lattice_params`, oriented so that the reciprocal vector
     `along_beam` (hkl) is along the beam (+z) and `in_plane` (hkl) is in the horizontal (x-z)
     plane towards +x (left of the beam), when all goniometer angles are zero. Ready-made crystals:
-    `aluminium`, `la2ni7` below.
+    `aluminum`, `la2ni7` below.
 
     `astar`, `bstar`, `cstar`, its reciprocal-lattice vectors in the lab frame (1/angstrom, incl.
     2pi), follow from these in `__post_init__`; they are not parameters of their own.
@@ -33,8 +33,10 @@ class Single_crystal(Component):
     lattice_params: list  # a, b, c (angstrom), alpha, beta, gamma (deg)
     along_beam: list  # hkl along the beam
     in_plane: list  # hkl in the horizontal plane, towards +x
-    reflections: str  # a McStas list (Al.lau), or a CIF file relative to core/cif/
-    size: float = 0.005  # cube edge, m
+    reflections: str  # a McStas list (Al.lau), or a CIF file relative to instrument/cif/
+    xwidth: float = 0.005  # m: a cube by default
+    yheight: float = 0.005  # m
+    zdepth: float = 0.005  # m
     order: int = 1  # 1 = single scattering only (no multiple scattering): much faster
     mosaic: float = 5.0  # arc minutes (Gaussian RMS)
 
@@ -73,7 +75,7 @@ class Single_crystal(Component):
         return 2 * np.pi * np.linalg.inv(np.array([va, vb, vc]))  # columns: a*, b*, c*
 
 
-def aluminium(**params) -> Single_crystal:
+def aluminum(**params) -> Single_crystal:
     """fcc Al, the McStas built-in reflection list Al.lau; cubic axes along the lab axes."""
     return Single_crystal(
         **{

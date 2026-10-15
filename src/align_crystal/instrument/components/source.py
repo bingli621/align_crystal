@@ -13,4 +13,4 @@ class Source_simple(Component):
     focus_on: str  # name of the component the source focuses on
     dist: float | None  # source -> focus plane, m; None = z of `focus_on` in the source frame
     flux: float
-    energy_meV: float  # meV, or the name of the control parameter that gives it
+    E0: float  # meV, or the name of the control parameter that gives it

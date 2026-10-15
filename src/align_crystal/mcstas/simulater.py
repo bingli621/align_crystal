@@ -9,7 +9,7 @@ import h5py
 import numpy as np
 from mcstasscript.helper.managed_mcrun import ManagedMcrun
 
-from align_crystal.core import SingleCrystalDiffractometer
+from align_crystal.instrument import SingleCrystalDiffractometer
 from align_crystal.mcstas.builder import OUTPUT_DIR, build_instrument
 
 
@@ -185,7 +185,7 @@ def run_from_beam(
 
 if __name__ == "__main__":
     # Edit the settings below and run this file (e.g. with VS Code's ▶ button).
-    from align_crystal.core import build_diffractometer, la2ni7
+    from align_crystal.instrument import build_diffractometer, la2ni7
 
     # the sample is the crystal, in the innermost goniometer arm
     crystal = la2ni7(mosaic=60, at=[0, 0, 0], relative="gonio_phi")

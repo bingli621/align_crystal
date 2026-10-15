@@ -13,7 +13,7 @@ class Monitor(Component):
 @dataclass(kw_only=True)
 class Monitor_nD(Component):
     radius: float  # m
-    height: float  # m
+    yheight: float  # m
     two_theta_range: list  # deg, signed: negative = right of the beam
     n_theta: int
     n_y: int

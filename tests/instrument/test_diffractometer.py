@@ -3,7 +3,7 @@ import sys
 
 import pytest
 
-from align_crystal.core import SingleCrystalDiffractometer as Diffractometer
+from align_crystal.instrument import SingleCrystalDiffractometer as Diffractometer
 
 
 def test_the_default_file_names_the_components_in_beam_order(diffractometer):
@@ -20,7 +20,7 @@ def test_from_dict_then_to_dict_roundtrip(diffractometer):
     cfg = diffractometer()
     data = cfg.to_dict()
     assert list(data)[:3] == ["name", "controls", "origin"]
-    assert list(data["slit"]) == ["component", "size", "at", "rotated", "relative"]
+    assert list(data["slit"]) == ["component", "xwidth", "yheight", "at", "rotated", "relative"]
     assert Diffractometer.from_dict(data) == cfg
 
 
@@ -49,8 +49,8 @@ def test_the_source_focusing_on_nothing_raises(diffractometer):
 
 
 def test_a_null_that_cannot_be_derived_raises(diffractometer):
-    with pytest.raises(ValueError, match="slit.size"):
-        diffractometer({"slit": {"size": None}})
+    with pytest.raises(ValueError, match="slit.xwidth"):
+        diffractometer({"slit": {"xwidth": None}})
 
 
 def test_the_control_parameters_of_the_diffractometer(diffractometer):
@@ -68,16 +68,16 @@ def test_the_control_parameters_of_the_diffractometer(diffractometer):
 
 
 def test_the_file_declares_the_controls_and_the_source_names_its_energy(diffractometer):
-    assert diffractometer().source.energy_meV == "energy_meV"
-    fixed = diffractometer({"source": {"energy_meV": 14}})  # a fixed energy is also allowed
-    assert fixed.source.energy_meV == 14
+    assert diffractometer().source.E0 == "energy_meV"
+    fixed = diffractometer({"source": {"E0": 14}})  # a fixed energy is also allowed
+    assert fixed.source.E0 == 14
     started = diffractometer({"controls": {"omega": {"value": 30}}})
     assert started.control_param()["omega"] == 30
 
 
 def test_a_component_naming_an_unknown_control_raises(diffractometer):
-    with pytest.raises(ValueError, match="slit.size uses 'widht'"):
-        diffractometer({"slit": {"size": "widht"}})
+    with pytest.raises(ValueError, match="slit.xwidth uses 'widht'"):
+        diffractometer({"slit": {"xwidth": "widht"}})
     with pytest.raises(ValueError, match="gonio_chi.rotated uses 'chii'"):
         diffractometer({"gonio_chi": {"rotated": [0, 0, "-chii"]}})
 
@@ -99,7 +99,7 @@ def test_a_control_named_like_a_role_raises(diffractometer):
 def test_core_imports_no_yaml_and_no_adapter():
     """The entities know no file format and no adapter (YAML is only loaded by `from_file`)."""
     code = (
-        "import sys, align_crystal.core;"
+        "import sys, align_crystal.instrument;"
         "bad = [m for m in sys.modules if m == 'yaml' or m.startswith(('align_crystal.yaml_io', 'align_crystal.mcstas'))];"
         "assert not bad, bad"
     )

@@ -14,14 +14,14 @@ from pathlib import Path
 
 from mcstasscript.interface import instr
 
-from align_crystal.core.components import (
+from align_crystal.instrument.components import (
     Monitor,
     Monitor_nD,
     Single_crystal,
     Slit,
     Source_simple,
 )
-from align_crystal.core.components.sample import CIF_DIR
+from align_crystal.instrument.components.sample import CIF_DIR
 
 # McStas-generated files (.instr, .c, compiled binary) and simulation output go here, not in
 # the project root. Created on use.
@@ -54,33 +54,32 @@ def _place(inst, name, c):
 
 
 def _configure_source(comp, c, cfg):
-    size = cfg.slit.size  # the source focuses on the slit opening
     comp.radius = c.radius
     comp.dist = c.dist
-    comp.focus_xw = size
-    comp.focus_yh = size
-    comp.E0 = c.energy_meV  # a number, or the name of the control parameter
+    comp.focus_xw = cfg.slit.xwidth  # the source focuses on the slit opening
+    comp.focus_yh = cfg.slit.yheight
+    comp.E0 = c.E0  # a number, or the name of the control parameter
     comp.dE = 0  # monochromatic
     comp.flux = c.flux
 
 
 def _configure_slit(comp, c, cfg):
-    comp.xwidth = c.size
-    comp.yheight = c.size
+    comp.xwidth = c.xwidth
+    comp.yheight = c.yheight
 
 
 def _configure_monitor(comp, c, cfg):
     """Integrated incident intensity, twice the slit opening; the neutrons carry on."""
-    comp.xwidth = 2 * cfg.slit.size
-    comp.yheight = 2 * cfg.slit.size
+    comp.xwidth = 2 * cfg.slit.xwidth
+    comp.yheight = 2 * cfg.slit.yheight
     comp.restore_neutron = 1
 
 
 def _configure_crystal(comp, c, cfg):
-    comp.xwidth = comp.yheight = comp.zdepth = c.size
+    comp.xwidth, comp.yheight, comp.zdepth = c.xwidth, c.yheight, c.zdepth
     comp.mosaic = c.mosaic
     comp.order = c.order
-    cif = CIF_DIR / c.reflections  # a CIF file of core/cif/, else as given (a McStas list)
+    cif = CIF_DIR / c.reflections  # a CIF file of instrument/cif/, else as given (a McStas list)
     comp.reflections = f'"{cif if cif.is_file() else c.reflections}"'
     comp.recip_cell = 1
     comp.ax, comp.ay, comp.az = c.astar
@@ -92,10 +91,10 @@ def _configure_detector(comp, c, cfg):
     """Stored as an event list with pixel ids, so mcstastox can read it (banana th/y)."""
     lo, hi = c.two_theta_range
     comp.radius = c.radius
-    comp.yheight = c.height
+    comp.yheight = c.yheight
     comp.options = (
         f'"banana, theta limits=[{lo} {hi}] bins={c.n_theta}, '
-        f"y limits=[{-c.height / 2} {c.height / 2}] bins={c.n_y}, "
+        f"y limits=[{-c.yheight / 2} {c.yheight / 2}] bins={c.n_y}, "
         'list all, pixel id, t"'
     )
     comp.filename = '"detector"'
@@ -130,7 +129,7 @@ def build_instrument(config, input_path=OUTPUT_DIR):
 
 
 if __name__ == "__main__":
-    from align_crystal.core import SingleCrystalDiffractometer
+    from align_crystal.instrument import SingleCrystalDiffractometer
 
     inst = build_instrument(SingleCrystalDiffractometer.from_file())
     inst.show_parameters()

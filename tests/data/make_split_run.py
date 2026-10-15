@@ -10,7 +10,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from align_crystal.core import build_diffractometer, la2ni7
+from align_crystal.instrument import build_diffractometer, la2ni7
 from align_crystal.mcstas.simulater import dump_beam, run_from_beam
 
 HERE = Path(__file__).parent / "split_run"

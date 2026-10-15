@@ -37,7 +37,8 @@ class Progress_bar(Component):
 
 @dataclass(kw_only=True)
 class Slit(Component):
-    size: float  # opening and source focus (x and y), m
+    xwidth: float  # opening (and source focus), m
+    yheight: float  # opening (and source focus), m
 
 
 @dataclass(kw_only=True)

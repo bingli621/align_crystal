@@ -7,7 +7,6 @@ import numpy as np
 import scipp as sc
 from scippneutron.conversion.graph import beamline, tof
 
-
 # scippneutron graph: positions -> two_theta (angle between ki and kf) -> momentum transfer
 Q_GRAPH = {
     **beamline.beamline(scatter=True),

@@ -1,5 +1,10 @@
-from align_crystal.core import SingleCrystalDiffractometer, build_diffractometer, la2ni7
-from align_crystal.yaml_io import yaml_loader, write_yaml
+from align_crystal.instrument import (
+    SingleCrystalDiffractometer,
+    aluminum,
+    build_diffractometer,
+    la2ni7,
+)
+from align_crystal.yaml_io import write_yaml, yaml_loader
 
 
 def test_write_then_read_gives_the_same_dict(tmp_path):
@@ -8,14 +13,16 @@ def test_write_then_read_gives_the_same_dict(tmp_path):
     assert yaml_loader(tmp_path / "x.yaml") == data
 
 
-def test_the_built_diffractometer_takes_the_crystal_aluminium_by_default():
+def test_the_built_diffractometer_has_no_sample_by_default():
     crystal = la2ni7(at=[0, 0, 0], relative="gonio_phi")
-    assert build_diffractometer().crystal.reflections == "Al.lau"
+    assert build_diffractometer().crystal is None
+    assert "crystal" not in build_diffractometer().components
     assert build_diffractometer(crystal).crystal is crystal  # as it is
 
 
 def test_the_default_file_makes_the_diffractometer_that_the_code_makes():
-    assert SingleCrystalDiffractometer.from_file() == build_diffractometer()
+    al = aluminum(at=[0, 0, 0], relative="gonio_phi")  # the sample of the file
+    assert SingleCrystalDiffractometer.from_file() == build_diffractometer(al)
 
 
 def test_the_diffractometer_roundtrips_through_a_yaml_file(diffractometer, tmp_path):
@@ -23,7 +30,7 @@ def test_the_diffractometer_roundtrips_through_a_yaml_file(diffractometer, tmp_p
     write_yaml(inst.to_dict(), tmp_path / "out.yaml")
     assert SingleCrystalDiffractometer.from_file(tmp_path / "out.yaml") == inst
     written = yaml_loader(tmp_path / "out.yaml")
-    assert written["source"]["energy_meV"] == "energy_meV"  # the control parameter
+    assert written["source"]["E0"] == "energy_meV"  # the control parameter
     assert written["controls"]["omega"] == {
         "value": 0.0,
         "unit": "deg",

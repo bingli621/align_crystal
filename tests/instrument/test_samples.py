@@ -3,11 +3,11 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from align_crystal.core import Single_crystal, aluminium, la2ni7
-from align_crystal.core.components.sample import CIF_DIR
+from align_crystal.instrument import Single_crystal, aluminum, la2ni7
+from align_crystal.instrument.components.sample import CIF_DIR
 
-ALUMINIUM = dict(  # the parameters of aluminium()
-    size=0.005, order=1, mosaic=5.0, reflections="Al.lau",
+ALUMINIUM = dict(  # the parameters of aluminum()
+    xwidth=0.005, yheight=0.005, zdepth=0.005, order=1, mosaic=5.0, reflections="Al.lau",
     lattice_params=[4.0495] * 3 + [90.0] * 3, along_beam=[0, 0, 1], in_plane=[1, 0, 0],
     at=[0, 0, 0],
 )  # fmt: skip
@@ -26,7 +26,7 @@ def test_la2ni7_orientation():
 
 
 def test_the_samples_are_crystals_placed_like_any_component():
-    for make in (aluminium, la2ni7):
+    for make in (aluminum, la2ni7):
         crystal = make(at=[0, 0, 0.1], rotated=[0, 5, 0], relative="arm")
         assert type(crystal) is Single_crystal
         assert (crystal.at, crystal.rotated, crystal.relative) == ([0, 0, 0.1], [0, 5, 0], "arm")
@@ -34,7 +34,7 @@ def test_the_samples_are_crystals_placed_like_any_component():
         with pytest.raises(TypeError, match="at"):  # like any component, it needs `at`
             make()
     assert la2ni7(mosaic=60, at=[0, 0, 0]).mosaic == 60
-    assert aluminium(at=[0, 0, 0]).reflections == "Al.lau"
+    assert aluminum(at=[0, 0, 0]).reflections == "Al.lau"
 
 
 def test_the_cif_of_a_crystal_is_a_path_inside_the_package():
@@ -71,7 +71,7 @@ def test_the_reciprocal_vectors_follow_the_parameters_and_are_not_parameters():
     from dataclasses import fields
 
     crystal = Single_crystal(**ALUMINIUM)
-    assert crystal == aluminium(at=[0, 0, 0])
+    assert crystal == aluminum(at=[0, 0, 0])
     assert "astar" not in [f.name for f in fields(crystal)]  # derived, so never in a file
     turned = Single_crystal(**{**ALUMINIUM, "along_beam": [1, 0, 0], "in_plane": [0, 1, 0]})
     assert turned.astar == pytest.approx([0, 0, 2 * np.pi / 4.0495])  # a* now along the beam
@@ -82,5 +82,7 @@ def test_size_order_and_mosaic_have_defaults():
         reflections="Al.lau", lattice_params=[4.0495] * 3 + [90.0] * 3,
         along_beam=[0, 0, 1], in_plane=[1, 0, 0], at=[0, 0, 0],
     )  # fmt: skip
-    assert (crystal.size, crystal.order, crystal.mosaic) == (0.005, 1, 5.0)
-    assert crystal == aluminium(at=[0, 0, 0])
+    assert (crystal.xwidth, crystal.yheight, crystal.zdepth, crystal.order, crystal.mosaic) == (
+        0.005,
+    ) * 3 + (1, 5.0)
+    assert crystal == aluminum(at=[0, 0, 0])

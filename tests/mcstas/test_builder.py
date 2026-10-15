@@ -1,7 +1,7 @@
 from pathlib import Path
 
+from align_crystal.instrument import build_diffractometer, la2ni7
 from align_crystal.mcstas.builder import build_instrument
-from align_crystal.core import build_diffractometer, la2ni7
 
 
 def test_components_are_added_in_order_with_their_mcstas_names(tmp_path, diffractometer):
@@ -32,4 +32,4 @@ def test_the_crystal_of_the_diffractometer_sets_the_mcstas_crystal(tmp_path):
     assert Path(
         crystal.reflections.strip('"')
     ).is_absolute()  # McStas gets the full path of the CIF
-    assert crystal.xwidth == cfg.crystal.size
+    assert crystal.xwidth == cfg.crystal.xwidth

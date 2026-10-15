@@ -1,6 +1,6 @@
 import pytest
 
-from align_crystal.core import SingleCrystalDiffractometer
+from align_crystal.instrument import SingleCrystalDiffractometer
 from align_crystal.yaml_io import yaml_loader
 
 

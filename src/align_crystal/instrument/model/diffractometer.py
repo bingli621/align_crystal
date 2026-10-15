@@ -13,7 +13,7 @@ from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
 from typing import ClassVar, get_args
 
-from .components import (
+from ..components import (
     COMPONENTS,
     Arm,
     Component,
@@ -60,7 +60,7 @@ class SingleCrystalDiffractometer:
     gonio_omega: Arm
     gonio_chi: Arm
     gonio_phi: Arm
-    crystal: Single_crystal
+    crystal: Single_crystal | None = None  # None: no sample
     detector: Monitor_nD
     controls: ControlParam = field(default_factory=lambda: ControlParam({}, {}, {}))
 
@@ -124,7 +124,9 @@ class SingleCrystalDiffractometer:
         """The diffractometer of the parameters file `file` (default: `PARAMS_FILE`), read with
         `loader`, a function from a path to the dict `from_dict` takes (default: YAML)."""
         if loader is None:
-            from ..yaml_io import yaml_loader as loader  # only now: core itself knows no YAML
+            from ...yaml_io import (
+                yaml_loader as loader,  # only now: instrument itself knows no YAML
+            )
         return cls.from_dict(loader(file or cls.PARAMS_FILE))
 
     def control_param(self, **values) -> ControlParam:

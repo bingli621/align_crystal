@@ -1,26 +1,36 @@
 import pytest
 
-from align_crystal.core import ControlParam, DesignParam, Slit
+from align_crystal.instrument import ControlParam, DesignParam, Slit
 
 DATA = {
     "name": "tiny",
-    "slit": {"component": "Slit", "size": 0.5, "at": [0, 0, 1], "rotated": None, "relative": None},
+    "slit": {
+        "component": "Slit",
+        "xwidth": 0.5,
+        "yheight": 0.5,
+        "at": [0, 0, 1],
+        "rotated": None,
+        "relative": None,
+    },
 }
 
 
 def test_make_takes_the_section_with_where_it_sits():
     slit = DesignParam(DATA).make(Slit, "slit")
-    assert (slit.size, slit.at) == (0.5, [0, 0, 1])
+    assert (slit.xwidth, slit.at) == (0.5, [0, 0, 1])
 
 
 @pytest.mark.parametrize(
     "changes, match",
     [
         ({"extra": 1}, "Unknown config key: extra"),
-        ({"slit": {"size": 0.5, "at": [0, 0, 1]}}, "No component in the section of 'slit'"),
+        (
+            {"slit": {"xwidth": 0.5, "yheight": 0.5, "at": [0, 0, 1]}},
+            "No component in the section of 'slit'",
+        ),
         ({"slit": {"component": "Nope"}}, "Unknown component 'Nope'"),
         ({"slit": {"component": "Slit", "sizee": 1, "at": [0, 0, 1]}}, "slit.*sizee"),
-        ({"slit": {"component": "Slit", "size": 0.5}}, "slit.*'at'"),
+        ({"slit": {"component": "Slit", "xwidth": 0.5, "yheight": 0.5}}, "slit.*'at'"),
     ],
 )
 def test_make_components_rejects_unknown_things(changes, match):
@@ -30,9 +40,9 @@ def test_make_components_rejects_unknown_things(changes, match):
 
 def test_the_order_is_the_order_of_the_sections():
     data = {
-        "b": {"component": "Slit", "size": 1, "at": [0, 0, 0]},
+        "b": {"component": "Slit", "xwidth": 1, "yheight": 1, "at": [0, 0, 0]},
         "name": "two",
-        "a": {"component": "Slit", "size": 2, "at": [0, 0, 1], "relative": "b"},
+        "a": {"component": "Slit", "xwidth": 2, "yheight": 2, "at": [0, 0, 1], "relative": "b"},
     }
     assert list(DesignParam(data).make_components({"Slit": Slit})) == ["b", "a"]
 
@@ -52,7 +62,7 @@ def test_complete_raises_on_a_control_that_is_not_set():
 
 
 def test_from_controls_makes_the_same_as_the_controls_section():
-    from align_crystal.core import Control
+    from align_crystal.instrument import Control
 
     made = ControlParam.from_controls(a=Control(None, "m", "length"), b=Control(1.0))
     assert made == ControlParam.from_dict(

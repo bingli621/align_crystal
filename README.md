@@ -13,7 +13,7 @@ src/align_crystal/   the library (installed)
     components/       the components, one dataclass each, named after the McStas component
                       (misc.py: Component, Progress_bar, Slit, Arm; source.py: Source_simple;
                        detector.py: Monitor, Monitor_nD; sample.py: Single_crystal, aluminum, la2ni7)
-    params.py         DesignParam: the design parameters, as one nested dict (`from_dict`); InstrumentParam
+    params.py         DesignParam: the design parameters, as one nested dict (`from_dict`); InstrParams
     cif/              a plain folder: La2Ni7.cif (ready-made crystals: aluminum(), la2ni7() in components/sample.py)
     model/            this instrument, the single-crystal diffractometer
       diffractometer.py SingleCrystalDiffractometer: its components, each recording where it sits, and its
@@ -46,7 +46,7 @@ reciprocal vectors) is computed when used, and `d.validate()` checks the whole a
 
 A parameters file is laid over the built one, so it need hold only what differs: a value it gives
 wins, one it leaves out, or sets to `null`, stays as built. Its layout is that of
-`src/align_crystal/instrument/model/params.yaml`, the built diffractometer saved (a test keeps them equal): `instrument_params` (the instrument parameter
+`src/align_crystal/instrument/model/params.yaml`, the built diffractometer saved (a test keeps them equal): `instr_params` (the instrument parameter
 parameters, see below) and one section per component name: its `component` (the McStas component),
 its parameters, and last where it sits (`at`, `rotated`, `relative`). Save your own with
 `write_yaml(d.to_dict(), "copy.yaml")`, edit it, and load it with `build_diffractometer(file="copy.yaml")`.
@@ -56,8 +56,8 @@ The parameters are one nested dict (`DesignParam`). A value left `null` is compu
 saved: the source's focus distance `dist` is the position of the component it focuses on (`focus_on`).
 Components never see the file.
 
-The instrument parameters (`InstrumentParam`) are the McStas instrument parameters, which each run may
-set. The components are general: the file declares them in its `instrument_params` section (start
+The instrument parameters (`InstrParams`) are the McStas instrument parameters, which each run may
+set. The components are general: the file declares them in its `instr_params` section (start
 `value`, `unit`, `comment`; a null value must be given by every run), and where a component takes a
 number it names an instrument parameter instead (or an expression of them), as in McStas: the diffractometer's
 goniometer arms have `rotated: [0, omega, 0]` etc. A name that is not an instrument parameter is an error.

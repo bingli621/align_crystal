@@ -7,7 +7,7 @@ name: align_crystal_diffractometer   # McStas instrument name
 # The instrument parameters: the McStas instrument parameters, which each run may set (a `value` null:
 # each run must set it). Where a component takes a number it may name one of these instead (or an
 # expression of them, "-chi"), as in McStas.
-instrument_params:
+instr_params:
   wavelength: {value: null, unit: angstrom, comment: neutron wavelength}
   omega:      {value: 0.0,  unit: deg, comment: goniometer rotation about +Y}
   chi:        {value: 0.0,  unit: deg, comment: goniometer rotation about -Z}

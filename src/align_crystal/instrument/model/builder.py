@@ -17,7 +17,7 @@ from ..components import (
     Slit,
     Source_simple,
 )
-from ..params import ControlParam, InstrumentParam, InstrumentParameter, merge
+from ..params import ControlParam, InstrParam, merge
 from .diffractometer import SingleCrystalDiffractometer
 
 PARAMS_FILE = Path(__file__).parent / "params.yaml"  # this diffractometer saved: a reference
@@ -46,10 +46,10 @@ def build_diffractometer(
 def _build(crystal, control):
     # the instrument parameters (McStas instrument parameters), set by each run; the wavelength is
     # calculated from the source's ei when used, unless a run (or the file) sets it
-    wavelength = InstrumentParameter(None, "angstrom", "neutron wavelength")
-    omega = InstrumentParameter(0.0, "deg", "goniometer rotation about +Y")
-    chi = InstrumentParameter(0.0, "deg", "goniometer rotation about -Z")
-    phi = InstrumentParameter(0.0, "deg", "goniometer rotation about +X")
+    wavelength = InstrParam(None, "angstrom", "neutron wavelength")
+    omega = InstrParam(0.0, "deg", "goniometer rotation about +Y")
+    chi = InstrParam(0.0, "deg", "goniometer rotation about -Z")
+    phi = InstrParam(0.0, "deg", "goniometer rotation about +X")
 
     # the components, in the order of the beam
     origin = Progress_bar(at=[0, 0, 0])
@@ -86,9 +86,7 @@ def _build(crystal, control):
 
     return SingleCrystalDiffractometer(
         name="align_crystal_diffractometer",
-        instrument_params=InstrumentParam.from_parameters(
-            wavelength=wavelength, omega=omega, chi=chi, phi=phi
-        ),
+        instr_params={"wavelength": wavelength, "omega": omega, "chi": chi, "phi": phi},
         origin=origin,
         source=source,
         slit=slit,

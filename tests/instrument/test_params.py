@@ -1,6 +1,6 @@
 import pytest
 
-from align_crystal.instrument import DesignParam, InstrumentParam, Slit
+from align_crystal.instrument import DesignParam, InstrParams, Slit
 
 DATA = {
     "name": "tiny",
@@ -52,27 +52,23 @@ def test_the_order_is_the_order_of_the_sections():
 
 
 def test_instrument_param_replaces_values_and_rejects_unknown_names():
-    instrument_params = InstrumentParam({"omega": 0.0}, {"omega": "deg"}, {"omega": ""})
-    assert (
-        instrument_params.replace(omega=30)["omega"] == 30 and instrument_params["omega"] == 0.0
-    )  # a copy
+    instr_params = InstrParams({"omega": 0.0}, {"omega": "deg"}, {"omega": ""})
+    assert instr_params.replace(omega=30)["omega"] == 30 and instr_params["omega"] == 0.0  # a copy
     with pytest.raises(ValueError, match="Unknown instrument parameter.*omgea"):
-        instrument_params.replace(omgea=30)
+        instr_params.replace(omgea=30)
 
 
 def test_complete_raises_on_a_control_that_is_not_set():
-    instrument_params = InstrumentParam({"e": None, "omega": 0.0}, {}, {})
+    instr_params = InstrParams({"e": None, "omega": 0.0}, {}, {})
     with pytest.raises(ValueError, match="not set: e$"):
-        instrument_params.complete()
-    assert instrument_params.replace(e=14).complete()["e"] == 14
+        instr_params.complete()
+    assert instr_params.replace(e=14).complete()["e"] == 14
 
 
 def test_from_parameters_makes_the_same_as_the_controls_section():
-    from align_crystal.instrument import InstrumentParameter
+    from align_crystal.instrument import InstrParam
 
-    made = InstrumentParam.from_parameters(
-        a=InstrumentParameter(None, "m", "length"), b=InstrumentParameter(1.0)
-    )
-    assert made == InstrumentParam.from_dict(
+    made = InstrParams.from_parameters(a=InstrParam(None, "m", "length"), b=InstrParam(1.0))
+    assert made == InstrParams.from_dict(
         {"a": {"value": None, "unit": "m", "comment": "length"}, "b": {"value": 1.0}}
     )

@@ -16,7 +16,7 @@ class Component:
     or instrument parameter names), both relative to the component named `relative` (None =
     absolute).
 
-    A component does not know which of its values a run instrument_params: the instrument declares its
+    A component does not know which of its values a run instr_params: the instrument declares its
     instrument parameters, and, as in McStas, a value an instrument parameter gives is the parameter's name (or an
     expression of them) instead of a number.
     """

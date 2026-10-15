@@ -1,15 +1,15 @@
-"""The parameters of an instrument: DesignParam, InstrumentParam and ControlParam.
+"""The parameters of an instrument: DesignParam, InstrParams and ControlParam.
 
 DesignParam: the parameters of an instrument, as one complete nested dict: what a parameters file
-holds, and the only thing read from or written to one. `name`; `instrument_params`, the instrument
+holds, and the only thing read from or written to one. `name`; `instr_params`, the instrument
 parameters the instrument declares (see below); and one section per component name, in the order of
 the instrument, with its `component` (the McStas component name, e.g. "Slit"), its parameters, and
 last where it sits: `at`, `rotated` and `relative`. Nothing is merged in from defaults. Where a value
 is null, the component derives it itself (the components never see the `DesignParam`). Where the
 dict comes from (a YAML file, code, ...) is not the entities' business.
 
-InstrumentParam: the instrument parameters, which McStas takes and a run sets. The components are
-general: the file of an instrument declares them in its `instrument_params` section (each with its
+InstrParams: the instrument parameters, which McStas takes and a run sets. The components are
+general: the file of an instrument declares them in its `instr_params` section (each with its
 start value, unit and comment; a null value must be set by every run), and a component value that
 one gives is the parameter's name instead of a number, as in McStas (`rotated: [0, omega, 0]`).
 `SingleCrystalDiffractometer.instrument_param` gives those of a run.
@@ -56,12 +56,12 @@ class DesignParam:
 
     def make_components(self, classes: dict) -> dict:
         """The components, keyed by name, in the order of their sections (every key but `name`
-        and `instrument_params`); each is the class its section's `component` (the component name) names:
+        and `instr_params`); each is the class its section's `component` (the component name) names:
         `classes` maps a component name (e.g. "Slit") to its class. Raises on a section that is not one or has no known
         `component`."""
         components = {}
         for name, section in self.data.items():
-            if name in ("name", "instrument_params"):
+            if name in ("name", "instr_params"):
                 continue
             if not isinstance(section, dict):
                 raise TypeError(f"Unknown config key: {name} (not a section)")
@@ -73,9 +73,9 @@ class DesignParam:
             components[name] = self.make(classes[component_name], name)
         return components
 
-    def instrument_param(self) -> "InstrumentParam":
-        """The instrument parameters the `instrument_params` section declares (none if there is none)."""
-        return InstrumentParam.from_dict(self.data.get("instrument_params") or {})
+    def instrument_param(self) -> "InstrParams":
+        """The instrument parameters the `instr_params` section declares (none if there is none)."""
+        return InstrParams.from_dict(self.data.get("instr_params") or {})
 
 
 @dataclass(frozen=True)
@@ -87,7 +87,7 @@ class ControlParam:
 
 
 @dataclass(frozen=True)
-class InstrumentParameter:
+class InstrParam:
     """One instrument parameter: its start value (None = not set yet: every run sets it), unit and
     comment."""
 
@@ -97,7 +97,7 @@ class InstrumentParameter:
 
 
 @dataclass(frozen=True)
-class InstrumentParam:
+class InstrParams:
     """The instrument parameters of an instrument or of one run: each McStas instrument parameter by
     name, with its value (None = not set yet: every run sets it), unit and comment."""
 
@@ -107,15 +107,13 @@ class InstrumentParam:
 
     @classmethod
     def from_dict(cls, data: dict):
-        """The instrument parameters of a `instrument_params` section: name -> {value, unit, comment}. `value`
+        """The instrument parameters of a `instr_params` section: name -> {value, unit, comment}. `value`
         is required (null: every run sets it); `unit` and `comment` are optional."""
         for name, entry in data.items():
             if not isinstance(entry, dict) or "value" not in entry:
-                raise ValueError(
-                    f"instrument_params.{name} needs a value (null: every run sets it)"
-                )
+                raise ValueError(f"instr_params.{name} needs a value (null: every run sets it)")
             for key in set(entry) - {"value", "unit", "comment"}:
-                raise ValueError(f"Unknown config key: instrument_params.{name}.{key}")
+                raise ValueError(f"Unknown config key: instr_params.{name}.{key}")
         return cls(
             {name: e["value"] for name, e in data.items()},
             {name: e.get("unit", "") for name, e in data.items()},
@@ -123,16 +121,16 @@ class InstrumentParam:
         )
 
     @classmethod
-    def from_parameters(cls, **instrument_params: InstrumentParameter):
-        """The instrument parameters made of one `InstrumentParameter` each, by McStas name, in order."""
+    def from_parameters(cls, **instr_params: InstrParam):
+        """The instrument parameters made of one `InstrParam` each, by McStas name, in order."""
         return cls(
-            {name: c.value for name, c in instrument_params.items()},
-            {name: c.unit for name, c in instrument_params.items()},
-            {name: c.comment for name, c in instrument_params.items()},
+            {name: c.value for name, c in instr_params.items()},
+            {name: c.unit for name, c in instr_params.items()},
+            {name: c.comment for name, c in instr_params.items()},
         )
 
     def to_dict(self) -> dict:
-        """The `instrument_params` section `from_dict` takes."""
+        """The `instr_params` section `from_dict` takes."""
         return {
             name: {"value": v, "unit": self.units[name], "comment": self.comments[name]}
             for name, v in self.values.items()
@@ -159,5 +157,5 @@ class InstrumentParam:
         """This, after checking that every value is set: raises on the ones still None."""
         unset = [name for name, value in self.values.items() if value is None]
         if unset:
-            raise ValueError(f"InstrumentParameter parameter(s) not set: {', '.join(unset)}")
+            raise ValueError(f"Instrument parameter(s) not set: {', '.join(unset)}")
         return self

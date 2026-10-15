@@ -21,12 +21,12 @@ def _instrument(config):
     return config
 
 
-def _set_instrument_params(inst, config, instrument_params):
-    """Set the instrument parameters of a run on `inst`: those of `config`, with `instrument_params` (McStas
+def _set_instr_params(inst, config, instr_params):
+    """Set the instrument parameters of a run on `inst`: those of `config`, with `instr_params` (McStas
     name -> value) in place of the calculated ones. Raises on an unknown name and on an instrument parameter
     left unset. A "min,max" string is an mcrun scan range: it is returned, not
     set, since McStasScript's parameters only take numbers."""
-    values = config.instrument_param(**instrument_params).complete().values
+    values = config.instrument_param(**instr_params).complete().values
     scans = {k: v for k, v in values.items() if isinstance(v, str)}
     inst.set_parameters(**{k: v for k, v in values.items() if k not in scans})
     return scans
@@ -48,9 +48,9 @@ def run(
     seed=None,
     mpi="auto",
     custom_flags=None,
-    **instrument_params,
+    **instr_params,
 ):
-    """Run a simulation; `config` is the `SingleCrystalDiffractometer` to simulate. `instrument_params` are
+    """Run a simulation; `config` is the `SingleCrystalDiffractometer` to simulate. `instr_params` are
     its instrument parameters for this run, by McStas name: omega, chi, phi (deg, 0 if not given). The
     `wavelength` (angstrom) is one of them: the diffractometer calculates it
     unless the run gives it. Output goes to `output_path/mccode.h5`. `custom_flags` is passed to
@@ -68,7 +68,7 @@ def run(
         suppress_output=True,
         custom_flags=custom_flags,
     )
-    scans = _set_instrument_params(inst, config, instrument_params)
+    scans = _set_instr_params(inst, config, instr_params)
     if scans:
         _run_scan(inst, scans)
     else:
@@ -76,13 +76,11 @@ def run(
     return Path(output_path) / "mccode.h5"
 
 
-def dump_beam(
-    output_path=OUTPUT_DIR / "beam", ncount=1e8, mpi="auto", config=None, **instrument_params
-):
+def dump_beam(output_path=OUTPUT_DIR / "beam", ncount=1e8, mpi="auto", config=None, **instr_params):
     """Part 1 of a split run: simulate source -> slit -> incident monitor -> `sample_pos` and dump
     the beam to an MCPL file. Run it once with a large `ncount`. Returns the path of the beam file
     (`<output_path>/beam.mcpl.gz`); the folder also has `mccode.h5` with the incident monitor.
-    `instrument_params` are the instrument parameters of the run (no scan ranges).
+    `instr_params` are the instrument parameters of the run (no scan ranges).
 
     The beam file only fits instruments with the same source and beam geometry, and the same
     wavelength, so make a new one if you change the config's source (e.g. its wavelength), slit or monitor
@@ -92,7 +90,7 @@ def dump_beam(
     shutil.rmtree(output_path, ignore_errors=True)
     output_path.parent.mkdir(parents=True, exist_ok=True)  # mcrun does not create parent folders
     inst = build_instrument(_instrument(config))
-    if _set_instrument_params(inst, config, instrument_params):
+    if _set_instr_params(inst, config, instr_params):
         raise ValueError("dump_beam does not scan: give numbers, not ranges")
     inst.settings(
         output_path=str(output_path),
@@ -120,12 +118,12 @@ def run_from_beam(
     config=None,
     n_jobs=None,
     seed=None,
-    **instrument_params,
+    **instr_params,
 ):
     """Part 2 of a split run, can be done any time later (even in another session): simulate
     `sample_pos` -> crystal -> detector for every omega, all starting from the same beam file made
     by `dump_beam`, with the angles running in parallel (`n_jobs` single-process mcrun jobs at a
-    time, default: all cores). `instrument_params` are the other instrument parameters, the same for every
+    time, default: all cores). `instr_params` are the other instrument parameters, the same for every
     omega: chi, phi (deg, 0 if not given); the wavelength must be the one of the beam file. Returns
     the path of `<output_path>/mccode.h5`, one file with an entry per omega (`entry1`, `entry2`,
     ... in the order of `omegas`).
@@ -157,7 +155,7 @@ def run_from_beam(
     # one mcrun job per angle: own parameters, output folder and seed
     jobs = []
     for n, omega in enumerate(omegas):
-        _set_instrument_params(inst, config, {**instrument_params, "omega": omega})
+        _set_instr_params(inst, config, {**instr_params, "omega": omega})
         jobs.append(
             dict(
                 inst._run_settings,

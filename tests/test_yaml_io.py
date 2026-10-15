@@ -45,7 +45,7 @@ def test_the_diffractometer_roundtrips_through_a_yaml_file(diffractometer, tmp_p
     assert build_diffractometer(file=tmp_path / "out.yaml") == inst
     written = yaml_loader(tmp_path / "out.yaml")
     assert written["source"]["ei"] == 14  # the operational parameter
-    assert written["instrument_params"]["omega"] == {
+    assert written["instr_params"]["omega"] == {
         "value": 0.0,
         "unit": "deg",
         "comment": "goniometer rotation about +Y",

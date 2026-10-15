@@ -31,13 +31,13 @@ OUTPUT_DIR = Path(__file__).resolve().parents[3] / "mcstas_output"
 def _add_instrument_parameters(inst, cfg):
     """One McStas instrument parameter per instrument parameter of `cfg`, with its calculated value,
     if any (a run sets its own with `set_parameters`, and must set those without one)."""
-    instrument_params = cfg.instrument_param()
-    for name, value in instrument_params.values.items():
+    instr_params = cfg.instrument_param()
+    for name, value in instr_params.values.items():
         inst.add_parameter(
             name,
             value=value,
-            unit=instrument_params.units[name],
-            comment=instrument_params.comments[name],
+            unit=instr_params.units[name],
+            comment=instr_params.comments[name],
         )
 
 

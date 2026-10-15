@@ -20,6 +20,19 @@ def wavelength(energy_meV):
     return sc.scalar(float(np.sqrt(81.80421 / energy_meV)), unit="angstrom")
 
 
+def run_wavelength(params, given=None):
+    """The wavelength of a scan point, as a scipp scalar: `given` if not None, else the instrument
+    parameter `wavelength` (angstrom) stored in the McStas output (`params`, its parameters)."""
+    if given is not None:
+        return given
+    if "wavelength" not in params:
+        raise ValueError(
+            "The scan stores no wavelength (made before it was an instrument parameter?): "
+            "give it, e.g. wavelength(14)"
+        )
+    return sc.scalar(float(params["wavelength"]), unit="angstrom")
+
+
 def to_Q(events, wavelength):
     """Add elastic momentum transfer to `events` (as returned by `read_scan`).
 

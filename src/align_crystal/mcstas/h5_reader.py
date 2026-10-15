@@ -28,6 +28,10 @@ def read_scan(folder, component="detector", source="source", sample="sample_pos"
     `events` is a scipp DataArray over 'pixel_id' with the intensity summed per pixel and coords
     `position`, `pixel_id`, `gamma` [deg, signed in-plane scattering angle, negative to the right
     of the beam; not scippneutron's two_theta, which is the full angle between ki and kf] and `y` [m] (height above the sample). Only pixels that were hit are included.
+
+    A split run (`run_from_beam`) has no source in its file: its `source_position` is then put
+    1 m upstream of the sample along the beam (+z, as in this instrument), which gives the right
+    incident direction for the elastic Q (its distance does not matter).
     """
     points = []
     with mcstastox.Read(str(folder)) as data:
@@ -36,8 +40,12 @@ def read_scan(folder, component="detector", source="source", sample="sample_pos"
     for entry in range(1, n_entries + 1):
         with mcstastox.Read(str(folder), entry_number=entry) as data:
             params = numeric_parameters(data.get_instrument_parameters())
-            grouped = data.export_scipp(source, sample, component_name=component)["events"]
             sample_pos = data.get_global_component_coordinates(sample)
+            try:
+                grouped = data.export_scipp(source, sample, component_name=component)["events"]
+            except ValueError:  # no source in the file: a split run
+                grouped = data.export_scipp(sample, sample, component_name=component)["events"]
+                grouped.coords["source_position"] = sc.vector(sample_pos - [0, 0, 1.0], unit="m")
 
         pixels = grouped.bins.sum()  # events are grouped by pixel id; sum the weights
         x, y, z = (pixels.coords["position"].values - sample_pos).T

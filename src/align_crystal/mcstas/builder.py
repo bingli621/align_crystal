@@ -31,14 +31,8 @@ OUTPUT_DIR = Path(__file__).resolve().parents[3] / "mcstas_output"
 def _add_instrument_parameters(inst, cfg):
     """One McStas instrument parameter per instrument parameter of `cfg`, with its calculated value,
     if any (a run sets its own with `set_parameters`, and must set those without one)."""
-    instr_params = cfg.instrument_param()
-    for name, value in instr_params.values.items():
-        inst.add_parameter(
-            name,
-            value=value,
-            unit=instr_params.units[name],
-            comment=instr_params.comments[name],
-        )
+    for p in cfg.instrument_param():
+        inst.add_parameter(p.name, value=p.value, unit=p.unit, comment=p.comment)
 
 
 def _place(inst, name, c):
@@ -130,9 +124,9 @@ def build_instrument(config, input_path=OUTPUT_DIR):
 
 
 if __name__ == "__main__":
-    from align_crystal.instrument import ControlParam, build_diffractometer
+    from align_crystal.instrument import CtrlParam, SingleCrystalDiffractometer
 
-    inst = build_instrument(build_diffractometer(control=ControlParam(ei=14)))
+    inst = build_instrument(SingleCrystalDiffractometer([CtrlParam("ei", 14, "meV")]))
     inst.show_parameters()
     inst.show_components()
     inst.show_diagram()

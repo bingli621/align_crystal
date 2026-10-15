@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from align_crystal.reduction import goniometer_matrix, wavelength
+from align_crystal.reduction import goniometer_matrix, run_wavelength, wavelength
 
 
 def test_goniometer_matrix():
@@ -19,3 +19,12 @@ def test_goniometer_matrix():
 def test_wavelength_of_the_energy():
     assert wavelength(14).value == pytest.approx(2.417262, abs=1e-5)
     assert wavelength(14).unit == "angstrom"
+
+
+def test_the_wavelength_of_a_scan_point_is_given_or_stored():
+    assert run_wavelength({"wavelength": 2.0}).value == 2.0  # stored by the McStas run
+    assert run_wavelength({"wavelength": 2.0}, wavelength(14)).value == pytest.approx(
+        2.417262, abs=1e-5
+    )
+    with pytest.raises(ValueError, match="stores no wavelength"):
+        run_wavelength({"omega": 0.0})

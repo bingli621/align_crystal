@@ -1,17 +1,18 @@
-# The diffractometer built in code (builder.py), saved: a reference of how a parameters file looks.
-# A file you load with build_diffractometer(file=...) is laid over the one the code makes, so it need
-# hold only what differs: a value it gives wins, one it leaves out or sets to null stays as built.
+# The diffractometer made in code (instrument/model/diffractometer.py), saved: a reference of how a
+# parameters file looks. A file you load with load(file) (yaml_io.py) is laid over the one the code
+# makes, so it need hold only what differs: a value it gives wins, one it leaves out or sets to null
+# stays as made.
 # A value left null here is computed when used (the source's `dist`: the z of `focus_on`).
 name: align_crystal_diffractometer   # McStas instrument name
 
-# The instrument parameters: the McStas instrument parameters, which each run may set (a `value` null:
-# each run must set it). Where a component takes a number it may name one of these instead (or an
+# The instrument parameters: the McStas instrument parameters, declared without values: the wavelength
+# is calculated from the source's ei, the goniometer angles are given by each run. Where a component takes a number it may name one of these instead (or an
 # expression of them, "-chi"), as in McStas.
 instr_params:
   wavelength: {value: null, unit: angstrom, comment: neutron wavelength}
-  omega:      {value: 0.0,  unit: deg, comment: goniometer rotation about +Y}
-  chi:        {value: 0.0,  unit: deg, comment: goniometer rotation about -Z}
-  phi:        {value: 0.0,  unit: deg, comment: goniometer rotation about +X}
+  omega:      {value: null, unit: deg, comment: goniometer rotation about +Y}
+  chi:        {value: null, unit: deg, comment: goniometer rotation about -Z}
+  phi:        {value: null, unit: deg, comment: goniometer rotation about +X}
 
 # One section per component name, in the order of the beam: the order in which the components are built (a
 # component can only be relative to one before it). Each has its `component` (the McStas component,
@@ -27,7 +28,7 @@ origin:
 source:                # monochromatic
   component: Source_simple
   lambda0: wavelength  # angstrom: the instrument parameter, calculated from ei unless a run sets it
-  ei: null             # meV: operational, given when the instrument is made (build_diffractometer(control=ControlParam(ei=...)))
+  ei: null             # meV: operational, given when the instrument is made (CtrlParam("ei", ...))
   radius: 0.03         # m
   focus_on: sample_pos # the component the source focuses on
   dist: null           # source -> focus plane, m; null = z of focus_on

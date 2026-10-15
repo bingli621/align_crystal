@@ -3,11 +3,11 @@ import copy
 import pytest
 
 from align_crystal.instrument import (
-    ControlParam,
+    CtrlParam,
     SingleCrystalDiffractometer,
     aluminum,
-    build_diffractometer,
 )
+from align_crystal.io import from_dict, to_dict
 
 
 def _update(base, changes):
@@ -24,12 +24,17 @@ def diffractometer():
     """diffractometer(changes=None) -> the SingleCrystalDiffractometer of its default parameters
     (with the aluminium sample) with the nested dict `changes` applied: a value null is set to
     null, so it is checked."""
-    default = build_diffractometer(
-        aluminum(at=[0, 0, 0], relative="gonio_phi"), ControlParam(ei=14)
-    ).to_dict()
+    default = to_dict(
+        SingleCrystalDiffractometer(
+            [
+                CtrlParam("crystal", aluminum(at=[0, 0, 0], relative="gonio_phi")),
+                CtrlParam("ei", 14),
+            ]
+        )
+    )
 
     def make(changes=None):
         data = _update(copy.deepcopy(default), changes or {})
-        return SingleCrystalDiffractometer.from_dict(data)
+        return from_dict(data)
 
     return make

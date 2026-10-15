@@ -13,14 +13,14 @@ src/align_crystal/   the library (installed)
     components/       the components, one dataclass each, named after the McStas component
                       (misc.py: Component, Progress_bar, Slit, Arm; source.py: Source_simple;
                        detector.py: Monitor, Monitor_nD; sample.py: Single_crystal, aluminum, la2ni7)
-    model/            the diffractometer and its parameters
+    params.py         DesignParam: the design parameters, as one nested dict (`from_dict`); ControlParam
+    cif/              a plain folder: La2Ni7.cif (ready-made crystals: aluminum(), la2ni7() in components/sample.py)
+    model/            this instrument, the single-crystal diffractometer
       diffractometer.py SingleCrystalDiffractometer: its components, each recording where it sits, and its
                         rule for the source focus (its distance follows from the component it focuses on)
-      params.py         DesignParam: the design parameters, as one nested dict (`from_dict`); ControlParam
+      builder.py        build_diffractometer(crystal=None): the default diffractometer made in code, with
+                        the given crystal as its sample (None: no sample)
       params.yaml       the complete default parameters; it names the components in beam order
-    cif/              a plain folder: La2Ni7.cif (ready-made crystals: aluminum(), la2ni7() in components/sample.py)
-    builder.py        build_diffractometer(crystal=None): the default diffractometer made in code, with
-                      the given crystal as its sample (None: no sample)
   yaml_io.py    the only module that knows YAML: yaml_loader (the default loader), write_yaml
   mcstas/       everything that talks to McStas
     builder.py        builds the McStasScript instrument from the diffractometer (goniometer: omega Y, chi -Z, phi X)
@@ -106,7 +106,7 @@ d = SingleCrystalDiffractometer.from_file()
 d = SingleCrystalDiffractometer.from_file("my_params.yaml", yaml_loader)
 # or in two steps; any dict works
 d = SingleCrystalDiffractometer.from_dict(yaml_loader("my_params.yaml"))
-# the default one, its components made in code (instrument/builder.py)
+# the default one, its components made in code (instrument/model/builder.py)
 d = build_diffractometer()
 # save its design parameters, to be read back by the first two
 write_yaml(d.to_dict(), "copy.yaml")

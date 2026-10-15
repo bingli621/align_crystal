@@ -2,7 +2,7 @@
 in deg. A value left None is calculated: by the component itself, or by the diffractometer (the
 source focus distance)."""
 
-from .components import (
+from ..components import (
     Arm,
     Monitor,
     Monitor_nD,
@@ -11,8 +11,8 @@ from .components import (
     Slit,
     Source_simple,
 )
-from .model.diffractometer import SingleCrystalDiffractometer
-from .model.params import Control, ControlParam
+from ..params import Control, ControlParam
+from .diffractometer import SingleCrystalDiffractometer
 
 
 def build_diffractometer(crystal: Single_crystal | None = None) -> SingleCrystalDiffractometer:

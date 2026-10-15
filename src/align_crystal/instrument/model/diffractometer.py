@@ -24,7 +24,7 @@ from ..components import (
     Slit,
     Source_simple,
 )
-from .params import ControlParam, DesignParam
+from ..params import ControlParam, DesignParam
 
 PLACEMENT = (
     "at",

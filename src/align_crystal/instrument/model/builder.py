@@ -1,6 +1,12 @@
-"""Builds the default diffractometer in code: the same values as params.yaml. Lengths in m, angles
-in deg. A value left None is calculated: by the component itself, or by the diffractometer (the
-source focus distance)."""
+"""Builds the default diffractometer in code: the entry point. Lengths in m, angles in deg. A value
+left None is calculated when used (the source focus distance, from `focus_on`).
+
+`params.yaml` next to it is this diffractometer saved, as a reference of how a parameters file
+looks: `build_diffractometer(file=...)` lays such a file over the one made here, so a file need hold
+only what differs (a value it gives wins; one it leaves out, or sets to null, stays as built here).
+"""
+
+from pathlib import Path
 
 from ..components import (
     Arm,
@@ -11,13 +17,28 @@ from ..components import (
     Slit,
     Source_simple,
 )
-from ..params import Control, ControlParam
+from ..params import Control, ControlParam, merge
 from .diffractometer import SingleCrystalDiffractometer
 
+PARAMS_FILE = Path(__file__).parent / "params.yaml"  # this diffractometer saved: a reference
 
-def build_diffractometer(crystal: Single_crystal | None = None) -> SingleCrystalDiffractometer:
+
+def build_diffractometer(
+    crystal: Single_crystal | None = None, file=None, loader=None
+) -> SingleCrystalDiffractometer:
     """The default diffractometer, with `crystal` (a `Single_crystal`, e.g.
-    `la2ni7(at=[0, 0, 0], relative="gonio_phi")`) as its sample, as it is; None: no sample."""
+    `la2ni7(at=[0, 0, 0], relative="gonio_phi")`) as its sample; None: no sample. With a parameters
+    `file`, read with `loader` (a function from a path to a dict; default: YAML), the file is laid
+    over it (see the top of this file), and the result is made from the merged dict."""
+    d = _build(crystal)
+    if file is None:
+        return d
+    if loader is None:
+        from ...yaml_io import yaml_loader as loader  # only now: instrument itself knows no YAML
+    return SingleCrystalDiffractometer.from_dict(merge(d.to_dict(), loader(file)))
+
+
+def _build(crystal):
     # the control parameters (McStas instrument parameters); a value None: every run sets it
     energy_meV = Control(None, "meV", "neutron energy (monochromatic)")
     omega = Control(0.0, "deg", "goniometer rotation about +Y")

@@ -14,7 +14,7 @@ from align_crystal.instrument import build_diffractometer, la2ni7
 from align_crystal.mcstas.simulater import dump_beam, run_from_beam
 
 HERE = Path(__file__).parent / "split_run"
-CRYSTAL = dict(mosaic=60, at=[0, 0, 0], relative="gonio_phi")
+CRYSTAL = {"mosaic": 60, "at": [0, 0, 0], "relative": "gonio_phi"}
 
 if __name__ == "__main__":
     work = HERE.parent / "_split_run_work"

@@ -27,7 +27,8 @@ class Single_crystal(Component):
     `aluminum`, `la2ni7` below.
 
     `astar`, `bstar`, `cstar`, its reciprocal-lattice vectors in the lab frame (1/angstrom, incl.
-    2pi), follow from these in `__post_init__`; they are not parameters of their own.
+    2pi), are computed from these when used (so they follow a change of them); they are not
+    parameters of their own.
     """
 
     lattice_params: list  # a, b, c (angstrom), alpha, beta, gamma (deg)
@@ -41,8 +42,23 @@ class Single_crystal(Component):
     mosaic: float = 5.0  # arc minutes (Gaussian RMS)
 
     def __post_init__(self):
-        """Derive `astar`, `bstar`, `cstar` (plain floats). Raises on a cell that is not one, and
-        if `along_beam` and `in_plane` are parallel."""
+        self.reciprocal_axes()  # raises at once on a bad cell or orientation
+
+    @property
+    def astar(self) -> list:
+        return self.reciprocal_axes()[0]
+
+    @property
+    def bstar(self) -> list:
+        return self.reciprocal_axes()[1]
+
+    @property
+    def cstar(self) -> list:
+        return self.reciprocal_axes()[2]
+
+    def reciprocal_axes(self) -> list:
+        """`astar`, `bstar`, `cstar` (plain floats). Raises on a cell that is not one, and if
+        `along_beam` and `in_plane` are parallel."""
         B = self.reciprocal_basis()
         z = B @ np.asarray(self.along_beam, float)
         x = B @ np.asarray(self.in_plane, float)
@@ -54,7 +70,7 @@ class Single_crystal(Component):
             )
         x = x_perp / np.linalg.norm(x_perp)
         R = np.array([x, np.cross(z, x), z])  # crystal Cartesian -> lab
-        self.astar, self.bstar, self.cstar = ((R @ B[:, i]).tolist() for i in range(3))
+        return [(R @ B[:, i]).tolist() for i in range(3)]
 
     def reciprocal_basis(self):
         """Columns are a*, b*, c* (incl. 2pi) of `lattice_params` in a crystal Cartesian frame with

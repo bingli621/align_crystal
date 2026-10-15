@@ -23,7 +23,6 @@ def test_make_takes_the_section_with_where_it_sits():
 @pytest.mark.parametrize(
     "changes, match",
     [
-        ({"extra": 1}, "Unknown config key: extra"),
         (
             {"slit": {"xwidth": 0.5, "yheight": 0.5, "at": [0, 0, 1]}},
             "No component in the section of 'slit'",
@@ -36,6 +35,11 @@ def test_make_takes_the_section_with_where_it_sits():
 def test_make_components_rejects_unknown_things(changes, match):
     with pytest.raises(ValueError, match=match):
         DesignParam({**DATA, **changes}).make_components({"Slit": Slit})
+
+
+def test_a_key_that_is_not_a_section_raises():
+    with pytest.raises(TypeError, match="Unknown config key: extra"):
+        DesignParam({**DATA, "extra": 1}).make_components({"Slit": Slit})
 
 
 def test_the_order_is_the_order_of_the_sections():

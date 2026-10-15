@@ -24,23 +24,22 @@ def test_from_dict_then_to_dict_roundtrip(diffractometer):
     assert Diffractometer.from_dict(data) == cfg
 
 
-def test_from_file_reads_the_file_with_the_loader_it_is_given(diffractometer):
-    seen = []
-
-    def loader(file):
-        seen.append(file)
-        return diffractometer().to_dict()
-
-    assert Diffractometer.from_file("any.thing", loader) == diffractometer()
-    assert seen == ["any.thing"]
+def test_the_focus_distance_is_computed_when_used(diffractometer):
+    d = diffractometer()
+    assert d.source.dist is None and d.source_dist == 2.0  # the z of sample_pos
+    d.sample_pos.at = [0, 0, 2.5]  # a change is followed
+    assert d.source_dist == 2.5
+    assert "dist" not in d.to_dict()["source"]  # not saved: a derived value
+    assert diffractometer({"source": {"dist": 1.5}}).source_dist == 1.5  # explicit wins
 
 
-def test_the_diffractometer_derives_the_focus_distance(diffractometer):
-    source = diffractometer().source
-    assert source.dist == 2.0  # the z of sample_pos
-    moved = diffractometer({"sample_pos": {"at": [0, 0, 2.5]}})
-    assert moved.source.dist == 2.5
-    assert diffractometer({"source": {"dist": 1.5}}).source.dist == 1.5  # explicit wins
+def test_a_component_can_be_changed_and_validated_again(diffractometer):
+    d = diffractometer()
+    d.slit.xwidth = 0.02
+    assert d.validate().to_dict()["slit"]["xwidth"] == 0.02
+    d.slit.xwidth = "widht"
+    with pytest.raises(ValueError, match="slit.xwidth uses 'widht'"):
+        d.validate()
 
 
 def test_the_source_focusing_on_nothing_raises(diffractometer):
@@ -97,7 +96,7 @@ def test_a_control_named_like_a_role_raises(diffractometer):
 
 
 def test_core_imports_no_yaml_and_no_adapter():
-    """The entities know no file format and no adapter (YAML is only loaded by `from_file`)."""
+    """The entities know no file format and no adapter (YAML is only loaded by `build_diffractometer(file=...)`)."""
     code = (
         "import sys, align_crystal.instrument;"
         "bad = [m for m in sys.modules if m == 'yaml' or m.startswith(('align_crystal.yaml_io', 'align_crystal.mcstas'))];"

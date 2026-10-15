@@ -22,6 +22,18 @@ import copy
 from dataclasses import dataclass, replace
 
 
+def merge(base: dict, over: dict) -> dict:
+    """`base` with `over` laid over it (neither is changed): a value in `over` wins, one it leaves
+    out or sets to null stays as in `base`; dicts are merged key by key, a list is replaced."""
+    merged = copy.deepcopy(base)
+    for key, value in over.items():
+        if isinstance(value, dict) and isinstance(merged.get(key), dict):
+            merged[key] = merge(merged[key], value)
+        elif value is not None or key not in merged:
+            merged[key] = copy.deepcopy(value)
+    return merged
+
+
 class DesignParam:
     """The parameters of an instrument, in memory (the dict is copied)."""
 
@@ -50,7 +62,7 @@ class DesignParam:
             if name in ("name", "controls"):
                 continue
             if not isinstance(section, dict):
-                raise ValueError(f"Unknown config key: {name} (not a section)")
+                raise TypeError(f"Unknown config key: {name} (not a section)")
             component_name = section.get("component")
             if component_name is None:
                 raise ValueError(f"No component in the section of {name!r}")

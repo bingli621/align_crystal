@@ -1,5 +1,5 @@
 from align_crystal.instrument import (
-    SingleCrystalDiffractometer,
+    PARAMS_FILE,
     aluminum,
     build_diffractometer,
     la2ni7,
@@ -20,15 +20,29 @@ def test_the_built_diffractometer_has_no_sample_by_default():
     assert build_diffractometer(crystal).crystal is crystal  # as it is
 
 
-def test_the_default_file_makes_the_diffractometer_that_the_code_makes():
-    al = aluminum(at=[0, 0, 0], relative="gonio_phi")  # the sample of the file
-    assert SingleCrystalDiffractometer.from_file() == build_diffractometer(al)
+def test_params_yaml_is_the_built_diffractometer_saved():
+    """The reference file is the built one with an aluminium sample: laid over the one with no
+    sample it gives the one the code makes with it, and over that one it changes nothing."""
+    al = aluminum(at=[0, 0, 0], relative="gonio_phi")
+    assert build_diffractometer(file=PARAMS_FILE) == build_diffractometer(al)
+    assert build_diffractometer(al, file=PARAMS_FILE) == build_diffractometer(al)
+
+
+def test_a_file_is_laid_over_the_code(tmp_path):
+    write_yaml(
+        {"slit": {"xwidth": 0.02, "yheight": None}, "detector": {"n_theta": 600}},
+        tmp_path / "over.yaml",
+    )
+    d = build_diffractometer(file=tmp_path / "over.yaml")
+    assert (d.slit.xwidth, d.slit.yheight) == (0.02, 0.01)  # given wins; null: as built
+    assert (d.detector.n_theta, d.detector.n_y) == (600, 50)  # missing: as built
+    assert d.source_dist == 2.0
 
 
 def test_the_diffractometer_roundtrips_through_a_yaml_file(diffractometer, tmp_path):
     inst = diffractometer({"detector": {"n_theta": 600}})
     write_yaml(inst.to_dict(), tmp_path / "out.yaml")
-    assert SingleCrystalDiffractometer.from_file(tmp_path / "out.yaml") == inst
+    assert build_diffractometer(file=tmp_path / "out.yaml") == inst
     written = yaml_loader(tmp_path / "out.yaml")
     assert written["source"]["E0"] == "energy_meV"  # the control parameter
     assert written["controls"]["omega"] == {
@@ -40,10 +54,10 @@ def test_the_diffractometer_roundtrips_through_a_yaml_file(diffractometer, tmp_p
 
 def test_numbers_in_the_yaml_are_numbers():
     """PyYAML reads 1.0e10 (no sign in the exponent) as a string: flux must be a number."""
-    assert isinstance(SingleCrystalDiffractometer.from_file().source.flux, float)
+    assert isinstance(build_diffractometer(file=PARAMS_FILE).source.flux, float)
 
 
 def test_a_diffractometer_with_another_crystal_roundtrips_through_a_yaml_file(tmp_path):
     inst = build_diffractometer(la2ni7(mosaic=60, at=[0, 0, 0], relative="gonio_phi"))
     write_yaml(inst.to_dict(), tmp_path / "la2ni7.yaml")  # the crystal holds plain floats
-    assert SingleCrystalDiffractometer.from_file(tmp_path / "la2ni7.yaml") == inst
+    assert build_diffractometer(file=tmp_path / "la2ni7.yaml") == inst

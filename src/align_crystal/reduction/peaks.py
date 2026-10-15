@@ -58,14 +58,14 @@ def load_points(folder, **kwargs):
         idx.append(np.full(len(w[-1]), k))
         mon.append(group["monitor_intensity"].value)
         mon_err.append(np.sqrt(group["monitor_intensity"].variance))
-    return dict(
-        q=np.concatenate(q),
-        w=np.concatenate(w),
-        var=np.concatenate(var),
-        scan=np.concatenate(idx),
-        monitor=np.array(mon),
-        monitor_err=np.array(mon_err),
-    )
+    return {
+        "q": np.concatenate(q),
+        "w": np.concatenate(w),
+        "var": np.concatenate(var),
+        "scan": np.concatenate(idx),
+        "monitor": np.array(mon),
+        "monitor_err": np.array(mon_err),
+    }
 
 
 def centre_of_mass(q, w, var, scan, monitor, monitor_err):

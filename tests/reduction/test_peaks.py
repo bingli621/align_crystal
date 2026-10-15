@@ -14,7 +14,7 @@ def _cloud(rng):
 
 def test_centre_of_mass_value():
     q, w, var, scan, mon, mon_err = _cloud(np.random.default_rng(0))
-    qc, cov, W, W_err = centre_of_mass(q, w, var, scan, mon, mon_err)
+    qc, cov, W, _ = centre_of_mass(q, w, var, scan, mon, mon_err)
     assert qc == pytest.approx(w @ q / w.sum())
     assert W == pytest.approx(w.sum())
     assert np.all(np.linalg.eigvalsh(cov) > 0)
@@ -23,7 +23,7 @@ def test_centre_of_mass_value():
 def test_error_propagation_matches_resampling():
     rng = np.random.default_rng(1)
     q, w, var, scan, mon, mon_err = _cloud(rng)
-    qc, cov, W, W_err = centre_of_mass(q, w, var, scan, mon, mon_err)
+    _, cov, _, W_err = centre_of_mass(q, w, var, scan, mon, mon_err)
 
     # resample the weights: Gaussian noise on each weight, and on each monitor reading (w ~ 1/I0)
     centres, totals = [], []

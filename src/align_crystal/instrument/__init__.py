@@ -8,8 +8,8 @@ cif/               a plain folder: the CIF files of the ready-made crystals (alu
 
 model/             this instrument, the single-crystal diffractometer:
   diffractometer.py  SingleCrystalDiffractometer: its components, each knowing where it sits
-  builder.py         build_diffractometer(): the same defaults, made in code
-  params.yaml        the default parameters, in beam order
+  builder.py         build_diffractometer(): the default made in code, with a file laid over it
+  params.yaml        build_diffractometer() saved: a reference of how a parameters file looks
 """
 
 from .components import (
@@ -23,11 +23,12 @@ from .components import (
     Source_simple,
 )
 from .components.sample import aluminum, la2ni7
-from .model.builder import build_diffractometer
+from .model.builder import PARAMS_FILE, build_diffractometer
 from .model.diffractometer import SingleCrystalDiffractometer
-from .params import Control, ControlParam, DesignParam
+from .params import Control, ControlParam, DesignParam, merge
 
 __all__ = [
+    "PARAMS_FILE",
     "Arm",
     "Component",
     "Control",
@@ -43,4 +44,5 @@ __all__ = [
     "aluminum",
     "build_diffractometer",
     "la2ni7",
+    "merge",
 ]

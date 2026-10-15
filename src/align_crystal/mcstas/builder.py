@@ -55,7 +55,7 @@ def _place(inst, name, c):
 
 def _configure_source(comp, c, cfg):
     comp.radius = c.radius
-    comp.dist = c.dist
+    comp.dist = cfg.source_dist
     comp.focus_xw = cfg.slit.xwidth  # the source focuses on the slit opening
     comp.focus_yh = cfg.slit.yheight
     comp.E0 = c.E0  # a number, or the name of the control parameter
@@ -116,6 +116,7 @@ def build_instrument(config, input_path=OUTPUT_DIR):
     """Return a McStasScript instrument with the components of `config` (a
     `SingleCrystalDiffractometer`) added in their order."""
     Path(input_path).mkdir(parents=True, exist_ok=True)
+    config.validate()  # its components may have been changed since it was made
     inst = instr.McStas_instr(config.name, input_path=str(input_path))
     _add_instrument_parameters(inst, config)
     for (
@@ -129,9 +130,9 @@ def build_instrument(config, input_path=OUTPUT_DIR):
 
 
 if __name__ == "__main__":
-    from align_crystal.instrument import SingleCrystalDiffractometer
+    from align_crystal.instrument import build_diffractometer
 
-    inst = build_instrument(SingleCrystalDiffractometer.from_file())
+    inst = build_instrument(build_diffractometer())
     inst.show_parameters()
     inst.show_components()
     inst.show_diagram()

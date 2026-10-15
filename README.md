@@ -33,22 +33,28 @@ mcstas_output/  generated McStas files and simulation results (git-ignored)
 ```
 
 Dependencies point inwards: `instrument` takes and gives plain nested dicts (`from_dict`, `to_dict`) and imports
-nothing from the outer layers; only `from_file` loads `yaml_io`, when no other loader (any function from a
+nothing from the outer layers; only `build_diffractometer(file=...)` loads `yaml_io`, when no other loader (any function from a
 path to a dict) is given. `mcstas` simulates a `SingleCrystalDiffractometer` that the caller creates;
-the sample is the diffractometer's `crystal` (a `Single_crystal`); `reduction` reads the McStas output with `mcstas.h5_reader`.
+the sample is the diffractometer's `crystal` (a `Single_crystal`, optional); `reduction` reads the McStas output with `mcstas.h5_reader`.
 
 ## Configuration
 
-All the parameters of the diffractometer are in one complete file,
-`src/align_crystal/instrument/model/params.yaml`, with its `controls` (the control parameters, see below) and one section per component name, in the order of the
-instrument: its `component` (the McStas component), its parameters, and last where it sits (`at`,
-`rotated`, `relative`). To change something,
-copy the file, edit it and load the copy (or edit the dict: `from_dict(data)`). Unknown or missing keys are errors.
+The diffractometer is built in code, by `build_diffractometer()` (`instrument/model/builder.py`): the
+components in the order of the beam, with their values. Its components are plain attributes
+(`d.slit.xwidth = 0.02`); what follows from them (the source's focus distance, the crystal's
+reciprocal vectors) is computed when used, and `d.validate()` checks the whole again (the McStas builder does).
 
-The file (`DesignParam`) holds all the parameters of the instrument. A value left `null` is calculated by the
-component itself in its `__post_init__`, or, if it depends on other components, by the diffractometer in
-its own `__post_init__` (the source's focus distance `dist` is the position of the component it
-focuses on, `focus_on`). Components never see the file.
+A parameters file is laid over the built one, so it need hold only what differs: a value it gives
+wins, one it leaves out, or sets to `null`, stays as built. Its layout is that of
+`src/align_crystal/instrument/model/params.yaml`, the built diffractometer saved (a test keeps them equal): `controls` (the control
+parameters, see below) and one section per component name: its `component` (the McStas component),
+its parameters, and last where it sits (`at`, `rotated`, `relative`). Save your own with
+`write_yaml(d.to_dict(), "copy.yaml")`, edit it, and load it with `build_diffractometer(file="copy.yaml")`.
+Unknown keys, and values missing from both, are errors.
+
+The parameters are one nested dict (`DesignParam`). A value left `null` is computed when used, not
+saved: the source's focus distance `dist` is the position of the component it focuses on (`focus_on`).
+Components never see the file.
 
 The control parameters (`ControlParam`) are the McStas instrument parameters, which each run may
 set. The components are general: the file declares the controls in its `controls` section (start
@@ -60,7 +66,7 @@ a run sets in place of the start values; `.complete()` raises on one still unset
 the energy from the McStas output and converts it with `reduction.wavelength`.
 
 ```yaml
-# my_params.yaml: params.yaml with, for example,
+# my_params.yaml: only what differs from the built diffractometer, for example
 source:
   radius: 0.02
 detector:
@@ -71,18 +77,18 @@ slit:
 
 ```python
 from align_crystal.mcstas.simulater import run
-from align_crystal.instrument import SingleCrystalDiffractometer
+from align_crystal.instrument import build_diffractometer
 
-# config: the diffractometer to simulate
+# config: the diffractometer to simulate, the built one with the file laid over it
 h5 = run(
-    config=SingleCrystalDiffractometer.from_file("my_params.yaml"),
+    config=build_diffractometer(file="my_params.yaml"),
     energy_meV=14,
     omega="-48,73",
     custom_flags="-N 122",
 )  # scan omega
 
-# another sample: the crystal of the diffractometer
-from align_crystal.instrument import build_diffractometer, la2ni7
+# a sample: the crystal of the diffractometer (none by default)
+from align_crystal.instrument import la2ni7
 
 h5 = run(
     config=build_diffractometer(la2ni7(mosaic=60, at=[0, 0, 0], relative="gonio_phi")),
@@ -98,17 +104,17 @@ A diffractometer can be created in these ways:
 from align_crystal.instrument import SingleCrystalDiffractometer, build_diffractometer
 from align_crystal.yaml_io import yaml_loader, write_yaml
 
-# from a file, read with a loader (YAML by default)
-d = SingleCrystalDiffractometer.from_file("my_params.yaml")
-# the default file, instrument/model/params.yaml
-d = SingleCrystalDiffractometer.from_file()
-# the same, with the loader given explicitly
-d = SingleCrystalDiffractometer.from_file("my_params.yaml", yaml_loader)
-# or in two steps; any dict works
-d = SingleCrystalDiffractometer.from_dict(yaml_loader("my_params.yaml"))
-# the default one, its components made in code (instrument/model/builder.py)
+# the built one, in code (instrument/model/builder.py)
 d = build_diffractometer()
-# save its design parameters, to be read back by the first two
+# with a file laid over it (read with a loader: YAML by default)
+d = build_diffractometer(file="my_params.yaml")
+d = build_diffractometer(file="my_params.yaml", loader=yaml_loader)
+# from a complete dict
+d = SingleCrystalDiffractometer.from_dict(d.to_dict())
+# change it, and check it again
+d.slit.xwidth = 0.02
+d.validate()
+# save its parameters
 write_yaml(d.to_dict(), "copy.yaml")
 ```
 

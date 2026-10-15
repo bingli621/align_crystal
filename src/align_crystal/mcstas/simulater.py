@@ -15,9 +15,9 @@ from align_crystal.mcstas.builder import OUTPUT_DIR, build_instrument
 
 def _instrument(config):
     """The instrument to simulate: `config` must be a `SingleCrystalDiffractometer` (e.g.
-    `SingleCrystalDiffractometer.from_file()`)."""
+    `build_diffractometer()`)."""
     if not isinstance(config, SingleCrystalDiffractometer):
-        raise ValueError(f"config must be a SingleCrystalDiffractometer, not {config!r}")
+        raise TypeError(f"config must be a SingleCrystalDiffractometer, not {config!r}")
     return config
 
 

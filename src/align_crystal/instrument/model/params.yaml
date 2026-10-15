@@ -1,6 +1,7 @@
-# Parameters of the diffractometer: everything in one complete file.
-# To change something, copy this file, edit it and load it (SingleCrystalDiffractometer.from_file). null means "calculate it": each
-# component does that itself (instrument/components/), or the diffractometer from the others (instrument/model/diffractometer.py).
+# The diffractometer built in code (builder.py), saved: a reference of how a parameters file looks.
+# A file you load with build_diffractometer(file=...) is laid over the one the code makes, so it need
+# hold only what differs: a value it gives wins, one it leaves out or sets to null stays as built.
+# A value left null here is computed when used (the source's `dist`: the z of `focus_on`).
 name: align_crystal_diffractometer   # McStas instrument name
 
 # The control parameters: the McStas instrument parameters, which each run may set (a `value` null:

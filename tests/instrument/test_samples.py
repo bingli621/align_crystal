@@ -6,11 +6,11 @@ import pytest
 from align_crystal.instrument import Single_crystal, aluminum, la2ni7
 from align_crystal.instrument.components.sample import CIF_DIR
 
-ALUMINIUM = dict(  # the parameters of aluminum()
-    xwidth=0.005, yheight=0.005, zdepth=0.005, order=1, mosaic=5.0, reflections="Al.lau",
-    lattice_params=[4.0495] * 3 + [90.0] * 3, along_beam=[0, 0, 1], in_plane=[1, 0, 0],
-    at=[0, 0, 0],
-)  # fmt: skip
+ALUMINIUM = {  # the parameters of aluminum()
+    "xwidth": 0.005, "yheight": 0.005, "zdepth": 0.005, "order": 1, "mosaic": 5.0,
+    "reflections": "Al.lau", "lattice_params": [4.0495] * 3 + [90.0] * 3,
+    "along_beam": [0, 0, 1], "in_plane": [1, 0, 0], "at": [0, 0, 0],
+}  # fmt: skip
 
 
 def test_la2ni7_orientation():
@@ -75,6 +75,14 @@ def test_the_reciprocal_vectors_follow_the_parameters_and_are_not_parameters():
     assert "astar" not in [f.name for f in fields(crystal)]  # derived, so never in a file
     turned = Single_crystal(**{**ALUMINIUM, "along_beam": [1, 0, 0], "in_plane": [0, 1, 0]})
     assert turned.astar == pytest.approx([0, 0, 2 * np.pi / 4.0495])  # a* now along the beam
+
+
+def test_the_reciprocal_vectors_follow_a_change_of_the_crystal():
+    crystal = aluminum(at=[0, 0, 0])
+    before = crystal.astar
+    crystal.along_beam, crystal.in_plane = [1, 0, 0], [0, 1, 0]
+    assert crystal.astar != before
+    assert crystal.astar == pytest.approx([0, 0, 2 * np.pi / 4.0495])  # a* now along the beam
 
 
 def test_size_order_and_mosaic_have_defaults():

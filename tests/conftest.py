@@ -1,7 +1,8 @@
+import copy
+
 import pytest
 
-from align_crystal.instrument import SingleCrystalDiffractometer
-from align_crystal.yaml_io import yaml_loader
+from align_crystal.instrument import SingleCrystalDiffractometer, aluminum, build_diffractometer
 
 
 def _update(base, changes):
@@ -16,10 +17,12 @@ def _update(base, changes):
 @pytest.fixture
 def diffractometer():
     """diffractometer(changes=None) -> the SingleCrystalDiffractometer of its default parameters
-    (the YAML file next to the class) with the nested dict `changes` applied."""
+    (with the aluminium sample) with the nested dict `changes` applied: a value null is set to
+    null, so it is checked."""
+    default = build_diffractometer(aluminum(at=[0, 0, 0], relative="gonio_phi")).to_dict()
 
     def make(changes=None):
-        data = _update(yaml_loader(SingleCrystalDiffractometer.PARAMS_FILE), changes or {})
+        data = _update(copy.deepcopy(default), changes or {})
         return SingleCrystalDiffractometer.from_dict(data)
 
     return make

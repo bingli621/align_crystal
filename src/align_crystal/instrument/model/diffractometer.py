@@ -2,16 +2,16 @@
 nested arms) + crystal -> detector.
 
 Its components, each knowing where it sits, and its control parameters (the energy and the three
-goniometer angles). Created from the nested dict of its parameters (`from_dict`), from a file
-(`from_file`, its own params.yaml by default), or in code (`builder.build_diffractometer`);
-`to_dict` gives the dict back. No McStas knowledge: mcstas/builder.py builds the McStas instrument
-from it.
+goniometer angles). Made in code (`builder.build_diffractometer`, optionally with a parameters file
+laid over it) or from the nested dict of its parameters (`from_dict`); `to_dict` gives the dict
+back. Its components are plain attributes (`d.slit.xwidth = 0.02`): what follows from them is
+computed when used, and `validate` checks the whole again. No McStas knowledge:
+mcstas/builder.py builds the McStas instrument from it.
 """
 
 import re
 from dataclasses import asdict, dataclass, field, fields
-from pathlib import Path
-from typing import ClassVar, get_args
+from typing import get_args
 
 from ..components import (
     COMPONENTS,
@@ -49,8 +49,6 @@ class SingleCrystalDiffractometer:
     the name of a control parameter instead, or an expression of them ("-chi"), as in McStas.
     """
 
-    PARAMS_FILE: ClassVar = Path(__file__).parent / "params.yaml"  # the default parameters
-
     name: str
     origin: Progress_bar
     source: Source_simple
@@ -74,17 +72,24 @@ class SingleCrystalDiffractometer:
         }
 
     def __post_init__(self):
-        """Derive the source focus distance: unless `dist` is given, it is the z of the component it focuses on (`focus_on`, placed
-        relative to the source). Then raise if a value that is not optional is still null, if a
-        control has the name of a component, and if a component uses a name that is not a control."""
-        if self.source.dist is None:
-            if source_focus := self.components.get(self.source.focus_on):
-                self.source.dist = source_focus.at[2]
-            else:
-                raise ValueError(
-                    f"The source focuses on {self.source.focus_on!r}, which is not a component"
-                )
+        self.validate()
 
+    @property
+    def source_dist(self) -> float:
+        """The source -> focus plane distance, m: the source's `dist`, or, if that is None, the z
+        of the component it focuses on (`focus_on`, placed relative to the source)."""
+        if self.source.dist is not None:
+            return self.source.dist
+        return self.components[self.source.focus_on].at[2]
+
+    def validate(self):
+        """Raise if the source focuses on something that is not a component, if a value that is
+        not optional is null, if a control has the name of a component, and if a component uses a
+        name that is not a control. Returns self. Run again after changing a component."""
+        if self.source.focus_on not in self.components:
+            raise ValueError(
+                f"The source focuses on {self.source.focus_on!r}, which is not a component"
+            )
         for name in self.controls:
             if name in self.components:
                 raise ValueError(f"The control parameter {name!r} is also a component name")
@@ -103,6 +108,7 @@ class SingleCrystalDiffractometer:
                             raise ValueError(
                                 f"{name}.{f.name} uses {word!r}, which is not a control parameter"
                             )
+        return self
 
     @classmethod
     def from_dict(cls, data: dict):
@@ -118,16 +124,6 @@ class SingleCrystalDiffractometer:
             )
         except TypeError as error:  # a missing or unknown component
             raise ValueError(f"Bad components: {error}") from None
-
-    @classmethod
-    def from_file(cls, file=None, loader=None):
-        """The diffractometer of the parameters file `file` (default: `PARAMS_FILE`), read with
-        `loader`, a function from a path to the dict `from_dict` takes (default: YAML)."""
-        if loader is None:
-            from ...yaml_io import (
-                yaml_loader as loader,  # only now: instrument itself knows no YAML
-            )
-        return cls.from_dict(loader(file or cls.PARAMS_FILE))
 
     def control_param(self, **values) -> ControlParam:
         """The control parameters of a run: `controls`, with `values` (McStas name -> value) in

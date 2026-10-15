@@ -1,8 +1,8 @@
 """The single-crystal diffractometer: source -> slit -> incident monitor -> goniometer (three
 nested arms) + crystal -> detector.
 
-Its components, each knowing where it sits, and its control parameters (the energy and the three
-goniometer angles). Made in code (`builder.build_diffractometer`, optionally with a parameters file
+Its components, each knowing where it sits, and its instrument parameters (the three
+goniometer angles), and the incident energy `ei` of its source (operational: given when it is made). Made in code (`builder.build_diffractometer`, optionally with a parameters file
 laid over it) or from the nested dict of its parameters (`from_dict`); `to_dict` gives the dict
 back. Its components are plain attributes (`d.slit.xwidth = 0.02`): what follows from them is
 computed when used, and `validate` checks the whole again. No McStas knowledge:
@@ -24,7 +24,7 @@ from ..components import (
     Slit,
     Source_simple,
 )
-from ..params import ControlParam, DesignParam
+from ..params import DesignParam, InstrumentParam
 
 PLACEMENT = (
     "at",
@@ -34,7 +34,7 @@ PLACEMENT = (
 
 
 def _takes_numbers(f) -> bool:
-    """Whether the component field `f` holds a number (or a list), which may be a control name."""
+    """Whether the component field `f` holds a number (or a list), which may be an instrument parameter name."""
     return any(t in (int, float, list) for t in (get_args(f.type) or (f.type,)))
 
 
@@ -42,11 +42,11 @@ def _takes_numbers(f) -> bool:
 class SingleCrystalDiffractometer:
     """The components, one field each in the order of the beam (the order they are built, each one
     knows where it sits; its field name is its name, the one that a `relative` refers to), and the
-    control parameters (`controls`, the McStas instrument parameters). `components` gives them as
+    instrument parameters (`instrument_params`, the McStas instrument parameters). `components` gives them as
     a dict by name.
 
     Where a component takes a number (or a list of them, as `at` and `rotated`), it may be given
-    the name of a control parameter instead, or an expression of them ("-chi"), as in McStas.
+    the name of an instrument parameter instead, or an expression of them ("-chi"), as in McStas.
     """
 
     name: str
@@ -60,7 +60,7 @@ class SingleCrystalDiffractometer:
     gonio_phi: Arm
     crystal: Single_crystal | None = None  # None: no sample
     detector: Monitor_nD
-    controls: ControlParam = field(default_factory=lambda: ControlParam({}, {}, {}))
+    instrument_params: InstrumentParam = field(default_factory=lambda: InstrumentParam({}, {}, {}))
 
     @property
     def components(self) -> dict[str, Component]:
@@ -84,15 +84,15 @@ class SingleCrystalDiffractometer:
 
     def validate(self):
         """Raise if the source focuses on something that is not a component, if a value that is
-        not optional is null, if a control has the name of a component, and if a component uses a
-        name that is not a control. Returns self. Run again after changing a component."""
+        not optional is null, if an instrument parameter has the name of a component, and if a component uses a
+        name that is not an instrument parameter. Returns self. Run again after changing a component."""
         if self.source.focus_on not in self.components:
             raise ValueError(
                 f"The source focuses on {self.source.focus_on!r}, which is not a component"
             )
-        for name in self.controls:
+        for name in self.instrument_params:
             if name in self.components:
-                raise ValueError(f"The control parameter {name!r} is also a component name")
+                raise ValueError(f"The instrument parameter {name!r} is also a component name")
         for name, c in self.components.items():
             for f in fields(c):
                 value = getattr(c, f.name)
@@ -104,9 +104,9 @@ class SingleCrystalDiffractometer:
                     if not isinstance(item, str):
                         continue
                     for word in re.findall(r"[A-Za-z_]\w*", item):
-                        if word not in self.controls:
+                        if word not in self.instrument_params:
                             raise ValueError(
-                                f"{name}.{f.name} uses {word!r}, which is not a control parameter"
+                                f"{name}.{f.name} uses {word!r}, which is not an instrument parameter"
                             )
         return self
 
@@ -119,17 +119,23 @@ class SingleCrystalDiffractometer:
         try:
             return cls(
                 name=design["name"],
-                controls=design.control_param(),
+                instrument_params=design.instrument_param(),
                 **design.make_components(COMPONENTS),
             )
         except TypeError as error:  # a missing or unknown component
             raise ValueError(f"Bad components: {error}") from None
 
-    def control_param(self, **values) -> ControlParam:
-        """The control parameters of a run: `controls`, with `values` (McStas name -> value) in
+    def instrument_param(self, **values) -> InstrumentParam:
+        """The instrument parameters of a run: `instrument_params`, with `values` (McStas name -> value) in
         place of the start values (a value still None must be set by the run, see
-        `ControlParam.complete`). Raises on a name in `values` that is not a control."""
-        return self.controls.replace(**values)
+        `InstrumentParam.complete`). Raises on a name in `values` that is not an instrument parameter."""
+        calculated = {}
+        if (
+            self.instrument_params.values.get("wavelength", 0) is None
+            and self.source.ei is not None
+        ):
+            calculated["wavelength"] = self.source.wavelength  # calculated from `ei` when used
+        return self.instrument_params.replace(**{**calculated, **values})
 
     def to_dict(self):
         """The nested dict `from_dict` takes. Each section has its `component`, its parameters
@@ -143,4 +149,8 @@ class SingleCrystalDiffractometer:
                 **{k: v for k, v in values.items() if v is not None},
                 **placement,
             }
-        return {"name": self.name, "controls": self.controls.to_dict(), **sections}
+        return {
+            "name": self.name,
+            "instrument_params": self.instrument_params.to_dict(),
+            **sections,
+        }

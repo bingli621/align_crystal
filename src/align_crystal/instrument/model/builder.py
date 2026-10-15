@@ -17,20 +17,25 @@ from ..components import (
     Slit,
     Source_simple,
 )
-from ..params import Control, ControlParam, merge
+from ..params import ControlParam, InstrumentParam, InstrumentParameter, merge
 from .diffractometer import SingleCrystalDiffractometer
 
 PARAMS_FILE = Path(__file__).parent / "params.yaml"  # this diffractometer saved: a reference
 
 
 def build_diffractometer(
-    crystal: Single_crystal | None = None, file=None, loader=None
+    crystal: Single_crystal | None = None,
+    control: ControlParam | None = None,
+    file=None,
+    loader=None,
 ) -> SingleCrystalDiffractometer:
     """The default diffractometer, with `crystal` (a `Single_crystal`, e.g.
-    `la2ni7(at=[0, 0, 0], relative="gonio_phi")`) as its sample; None: no sample. With a parameters
+    `la2ni7(at=[0, 0, 0], relative="gonio_phi")`) as its sample; None: no sample. `control` (a `ControlParam`, e.g. `ControlParam(ei=14)`) is what is
+    given when the instrument is made: the source takes its incident energy `ei` (meV) and turns it
+    into the wavelength instrument parameter McStas gets (a file may give `ei` too, and wins). With a parameters
     `file`, read with `loader` (a function from a path to a dict; default: YAML), the file is laid
     over it (see the top of this file), and the result is made from the merged dict."""
-    d = _build(crystal)
+    d = _build(crystal, control or ControlParam())
     if file is None:
         return d
     if loader is None:
@@ -38,17 +43,18 @@ def build_diffractometer(
     return SingleCrystalDiffractometer.from_dict(merge(d.to_dict(), loader(file)))
 
 
-def _build(crystal):
-    # the control parameters (McStas instrument parameters); a value None: every run sets it
-    energy_meV = Control(None, "meV", "neutron energy (monochromatic)")
-    omega = Control(0.0, "deg", "goniometer rotation about +Y")
-    chi = Control(0.0, "deg", "goniometer rotation about -Z")
-    phi = Control(0.0, "deg", "goniometer rotation about +X")
+def _build(crystal, control):
+    # the instrument parameters (McStas instrument parameters), set by each run; the wavelength is
+    # calculated from the source's ei when used, unless a run (or the file) sets it
+    wavelength = InstrumentParameter(None, "angstrom", "neutron wavelength")
+    omega = InstrumentParameter(0.0, "deg", "goniometer rotation about +Y")
+    chi = InstrumentParameter(0.0, "deg", "goniometer rotation about -Z")
+    phi = InstrumentParameter(0.0, "deg", "goniometer rotation about +X")
 
     # the components, in the order of the beam
     origin = Progress_bar(at=[0, 0, 0])
     source = Source_simple(
-        E0="energy_meV",  # the control parameter
+        ei=control.ei,  # the source converts it to a wavelength
         radius=0.03,
         focus_on="sample_pos",  # the component the source focuses on
         dist=None,  # source -> focus plane: derived from focus_on
@@ -63,7 +69,7 @@ def _build(crystal):
     incident_monitor = Monitor(at=[0, 0, 1.9], relative="source")
     # the beam hits the goniometer centre; it can be dumped here
     sample_pos = Arm(at=[0, 0, 2.0], relative="source")
-    # goniometer arms, outermost first; each is rotated by a control parameter, so it can be scanned
+    # goniometer arms, outermost first; each is rotated by an instrument parameter, so it can be scanned
     gonio_omega = Arm(at=[0, 0, 0], rotated=[0, "omega", 0], relative="sample_pos")  # about +Y
     gonio_chi = Arm(at=[0, 0, 0], rotated=[0, 0, "-chi"], relative="gonio_omega")  # about -Z
     gonio_phi = Arm(at=[0, 0, 0], rotated=["phi", 0, 0], relative="gonio_chi")  # about +X
@@ -80,7 +86,9 @@ def _build(crystal):
 
     return SingleCrystalDiffractometer(
         name="align_crystal_diffractometer",
-        controls=ControlParam.from_controls(energy_meV=energy_meV, omega=omega, chi=chi, phi=phi),
+        instrument_params=InstrumentParam.from_parameters(
+            wavelength=wavelength, omega=omega, chi=chi, phi=phi
+        ),
         origin=origin,
         source=source,
         slit=slit,

@@ -15,7 +15,7 @@ from scipy import ndimage
 from scipy.spatial import cKDTree
 
 from .normalization import normalize_scan
-from .reduction import to_Q, to_sample_frame, wavelength
+from .reduction import to_Q, to_sample_frame
 
 
 @dataclass
@@ -34,8 +34,9 @@ class Peak:
         return np.sqrt(np.diag(self.q_cov))
 
 
-def load_points(folder, **kwargs):
-    """Normalized scan as a point cloud in the sample-frame Q space.
+def load_points(folder, wavelength, **kwargs):
+    """Normalized scan as a point cloud in the sample-frame Q space. `wavelength` is a scipp scalar
+    (`reduction.wavelength(ei)`), the same for every scan point.
 
     Returns a dict with arrays over the pixel contributions of all scan points: `q` (N, 3),
     `w` (normalized weight), `var` (its Monte Carlo variance, sum of squared event weights),
@@ -51,7 +52,7 @@ def load_points(folder, **kwargs):
         sq = sc.DataArray(c["data"].data * c["data"].data, coords=c["data"].coords)
         sq_per_pixel = sc.bins(begin=c["begin"], dim=c["dim"], data=sq).bins.sum()
         pixels = events.bins.sum()
-        qs = to_sample_frame(to_Q(pixels, wavelength(params["energy_meV"])), params)
+        qs = to_sample_frame(to_Q(pixels, wavelength), params)
         q.append(np.stack([qs.coords[f"{a}_sample"].values for a in ("Qx", "Qy", "Qz")], axis=1))
         w.append(pixels.values)
         var.append(sq_per_pixel.values)
@@ -92,6 +93,7 @@ def centre_of_mass(q, w, var, scan, monitor, monitor_err):
 
 def find_peaks(
     folder,
+    wavelength=None,
     voxel=0.04,
     smooth=1.0,
     nsigma=20.0,
@@ -109,11 +111,11 @@ def find_peaks(
     voxel above that threshold belongs to the nearest candidate if it is within `radius`
     (1/angstrom, keep it below half the lattice spacing so neighbours are not merged). Peaks with
     fewer than `min_points` pixel contributions, or an intensity below `min_significance` times
-    its uncertainty, are dropped. Pass `points` (from `load_points`)
-    to reuse already loaded data. For data from `run_from_beam`, give the beam run's
+    its uncertainty, are dropped. Give the `wavelength` (a scipp
+    scalar, `reduction.wavelength(ei)`), or `points` (from `load_points`) to reuse loaded data. For data from `run_from_beam`, give the beam run's
     `monitor_file` (see `normalize_scan`).
     """
-    p = points if points is not None else load_points(folder, monitor_file=monitor_file)
+    p = points if points is not None else load_points(folder, wavelength, monitor_file=monitor_file)
     q = p["q"]
     lo = q.min(axis=0) - 2 * voxel
     shape = np.ceil((q.max(axis=0) + 2 * voxel - lo) / voxel).astype(int)

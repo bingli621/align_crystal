@@ -29,15 +29,15 @@ OUTPUT_DIR = Path(__file__).resolve().parents[3] / "mcstas_output"
 
 
 def _add_instrument_parameters(inst, cfg):
-    """One McStas instrument parameter per control parameter of `cfg`, with its calculated value,
+    """One McStas instrument parameter per instrument parameter of `cfg`, with its calculated value,
     if any (a run sets its own with `set_parameters`, and must set those without one)."""
-    controls = cfg.control_param()
-    for name, value in controls.values.items():
+    instrument_params = cfg.instrument_param()
+    for name, value in instrument_params.values.items():
         inst.add_parameter(
             name,
             value=value,
-            unit=controls.units[name],
-            comment=controls.comments[name],
+            unit=instrument_params.units[name],
+            comment=instrument_params.comments[name],
         )
 
 
@@ -58,8 +58,8 @@ def _configure_source(comp, c, cfg):
     comp.dist = cfg.source_dist
     comp.focus_xw = cfg.slit.xwidth  # the source focuses on the slit opening
     comp.focus_yh = cfg.slit.yheight
-    comp.E0 = c.E0  # a number, or the name of the control parameter
-    comp.dE = 0  # monochromatic
+    comp.lambda0 = c.lambda0  # a number, or the name of the instrument parameter
+    comp.dlambda = 0  # monochromatic
     comp.flux = c.flux
 
 
@@ -130,10 +130,11 @@ def build_instrument(config, input_path=OUTPUT_DIR):
 
 
 if __name__ == "__main__":
-    from align_crystal.instrument import build_diffractometer
+    from align_crystal.instrument import ControlParam, build_diffractometer
 
-    inst = build_instrument(build_diffractometer())
+    inst = build_instrument(build_diffractometer(control=ControlParam(ei=14)))
     inst.show_parameters()
     inst.show_components()
     inst.show_diagram()
+    inst.write_full_instrument()  # show_instrument_file reads the file on disk: write it first
     inst.show_instrument_file(line_numbers=True)

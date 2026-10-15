@@ -13,11 +13,11 @@ class Component:
     left to the diffractometer. It knows nothing of the file it came from.
 
     It also records where it sits, as McStas AT and ROTATED: `at` (m) and `rotated` (deg, numbers
-    or control parameter names), both relative to the component named `relative` (None =
+    or instrument parameter names), both relative to the component named `relative` (None =
     absolute).
 
-    A component does not know which of its values a run controls: the instrument declares its
-    control parameters, and, as in McStas, a value a control gives is the control's name (or an
+    A component does not know which of its values a run instrument_params: the instrument declares its
+    instrument parameters, and, as in McStas, a value an instrument parameter gives is the parameter's name (or an
     expression of them) instead of a number.
     """
 
@@ -43,4 +43,4 @@ class Slit(Component):
 
 @dataclass(kw_only=True)
 class Arm(Component):
-    """A reference frame (a goniometer axis, when its `rotated` uses a control parameter)."""
+    """A reference frame (a goniometer axis, when its `rotated` uses an instrument parameter)."""

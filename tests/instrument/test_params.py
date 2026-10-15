@@ -1,6 +1,6 @@
 import pytest
 
-from align_crystal.instrument import ControlParam, DesignParam, Slit
+from align_crystal.instrument import DesignParam, InstrumentParam, Slit
 
 DATA = {
     "name": "tiny",
@@ -51,24 +51,28 @@ def test_the_order_is_the_order_of_the_sections():
     assert list(DesignParam(data).make_components({"Slit": Slit})) == ["b", "a"]
 
 
-def test_control_param_replaces_values_and_rejects_unknown_names():
-    controls = ControlParam({"omega": 0.0}, {"omega": "deg"}, {"omega": ""})
-    assert controls.replace(omega=30)["omega"] == 30 and controls["omega"] == 0.0  # a copy
-    with pytest.raises(ValueError, match="Unknown control parameter.*omgea"):
-        controls.replace(omgea=30)
+def test_instrument_param_replaces_values_and_rejects_unknown_names():
+    instrument_params = InstrumentParam({"omega": 0.0}, {"omega": "deg"}, {"omega": ""})
+    assert (
+        instrument_params.replace(omega=30)["omega"] == 30 and instrument_params["omega"] == 0.0
+    )  # a copy
+    with pytest.raises(ValueError, match="Unknown instrument parameter.*omgea"):
+        instrument_params.replace(omgea=30)
 
 
 def test_complete_raises_on_a_control_that_is_not_set():
-    controls = ControlParam({"e": None, "omega": 0.0}, {}, {})
+    instrument_params = InstrumentParam({"e": None, "omega": 0.0}, {}, {})
     with pytest.raises(ValueError, match="not set: e$"):
-        controls.complete()
-    assert controls.replace(e=14).complete()["e"] == 14
+        instrument_params.complete()
+    assert instrument_params.replace(e=14).complete()["e"] == 14
 
 
-def test_from_controls_makes_the_same_as_the_controls_section():
-    from align_crystal.instrument import Control
+def test_from_parameters_makes_the_same_as_the_controls_section():
+    from align_crystal.instrument import InstrumentParameter
 
-    made = ControlParam.from_controls(a=Control(None, "m", "length"), b=Control(1.0))
-    assert made == ControlParam.from_dict(
+    made = InstrumentParam.from_parameters(
+        a=InstrumentParameter(None, "m", "length"), b=InstrumentParameter(1.0)
+    )
+    assert made == InstrumentParam.from_dict(
         {"a": {"value": None, "unit": "m", "comment": "length"}, "b": {"value": 1.0}}
     )

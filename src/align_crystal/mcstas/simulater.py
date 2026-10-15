@@ -21,12 +21,12 @@ def _instrument(config):
     return config
 
 
-def _set_controls(inst, config, controls):
-    """Set the control parameters of a run on `inst`: those of `config`, with `controls` (McStas
-    name -> value) in place of the calculated ones. Raises on an unknown name and on a control
-    left unset (e.g. the energy). A "min,max" string is an mcrun scan range: it is returned, not
+def _set_instrument_params(inst, config, instrument_params):
+    """Set the instrument parameters of a run on `inst`: those of `config`, with `instrument_params` (McStas
+    name -> value) in place of the calculated ones. Raises on an unknown name and on an instrument parameter
+    left unset. A "min,max" string is an mcrun scan range: it is returned, not
     set, since McStasScript's parameters only take numbers."""
-    values = config.control_param(**controls).complete().values
+    values = config.instrument_param(**instrument_params).complete().values
     scans = {k: v for k, v in values.items() if isinstance(v, str)}
     inst.set_parameters(**{k: v for k, v in values.items() if k not in scans})
     return scans
@@ -48,12 +48,13 @@ def run(
     seed=None,
     mpi="auto",
     custom_flags=None,
-    **controls,
+    **instrument_params,
 ):
-    """Run a simulation; `config` is the `SingleCrystalDiffractometer` to simulate. `controls` are
-    its control parameters for this run, by McStas name: energy_meV (always), omega, chi, phi
-    (deg, 0 if not given). Output goes to `output_path/mccode.h5`. `custom_flags` is passed to
-    mcrun; with "-N 3" a control given as "min,max" (e.g. omega="3,5") is scanned over 3 points."""
+    """Run a simulation; `config` is the `SingleCrystalDiffractometer` to simulate. `instrument_params` are
+    its instrument parameters for this run, by McStas name: omega, chi, phi (deg, 0 if not given). The
+    `wavelength` (angstrom) is one of them: the diffractometer calculates it
+    unless the run gives it. Output goes to `output_path/mccode.h5`. `custom_flags` is passed to
+    mcrun; with "-N 3" an instrument parameter given as "min,max" (e.g. omega="3,5") is scanned over 3 points."""
     shutil.rmtree(output_path, ignore_errors=True)  # always start from a clean folder
     inst = build_instrument(_instrument(config))
     inst.settings(
@@ -67,7 +68,7 @@ def run(
         suppress_output=True,
         custom_flags=custom_flags,
     )
-    scans = _set_controls(inst, config, controls)
+    scans = _set_instrument_params(inst, config, instrument_params)
     if scans:
         _run_scan(inst, scans)
     else:
@@ -75,21 +76,23 @@ def run(
     return Path(output_path) / "mccode.h5"
 
 
-def dump_beam(output_path=OUTPUT_DIR / "beam", ncount=1e8, mpi="auto", config=None, **controls):
+def dump_beam(
+    output_path=OUTPUT_DIR / "beam", ncount=1e8, mpi="auto", config=None, **instrument_params
+):
     """Part 1 of a split run: simulate source -> slit -> incident monitor -> `sample_pos` and dump
     the beam to an MCPL file. Run it once with a large `ncount`. Returns the path of the beam file
     (`<output_path>/beam.mcpl.gz`); the folder also has `mccode.h5` with the incident monitor.
-    `controls` are the control parameters of the run (energy_meV, always; no scan ranges).
+    `instrument_params` are the instrument parameters of the run (no scan ranges).
 
     The beam file only fits instruments with the same source and beam geometry, and the same
-    energy, so make a new one if you change the config's source, slit or monitor settings or the
-    energy.
+    wavelength, so make a new one if you change the config's source (e.g. its wavelength), slit or monitor
+    settings.
     """
     output_path = Path(output_path)
     shutil.rmtree(output_path, ignore_errors=True)
     output_path.parent.mkdir(parents=True, exist_ok=True)  # mcrun does not create parent folders
     inst = build_instrument(_instrument(config))
-    if _set_controls(inst, config, controls):
+    if _set_instrument_params(inst, config, instrument_params):
         raise ValueError("dump_beam does not scan: give numbers, not ranges")
     inst.settings(
         output_path=str(output_path),
@@ -117,13 +120,13 @@ def run_from_beam(
     config=None,
     n_jobs=None,
     seed=None,
-    **controls,
+    **instrument_params,
 ):
     """Part 2 of a split run, can be done any time later (even in another session): simulate
     `sample_pos` -> crystal -> detector for every omega, all starting from the same beam file made
     by `dump_beam`, with the angles running in parallel (`n_jobs` single-process mcrun jobs at a
-    time, default: all cores). `controls` are the other control parameters, the same for every
-    omega: energy_meV (always, the one of the beam file), chi, phi (deg, 0 if not given). Returns
+    time, default: all cores). `instrument_params` are the other instrument parameters, the same for every
+    omega: chi, phi (deg, 0 if not given); the wavelength must be the one of the beam file. Returns
     the path of `<output_path>/mccode.h5`, one file with an entry per omega (`entry1`, `entry2`,
     ... in the order of `omegas`).
 
@@ -154,7 +157,7 @@ def run_from_beam(
     # one mcrun job per angle: own parameters, output folder and seed
     jobs = []
     for n, omega in enumerate(omegas):
-        _set_controls(inst, config, {**controls, "omega": omega})
+        _set_instrument_params(inst, config, {**instrument_params, "omega": omega})
         jobs.append(
             dict(
                 inst._run_settings,
@@ -185,18 +188,17 @@ def run_from_beam(
 
 if __name__ == "__main__":
     # Edit the settings below and run this file (e.g. with VS Code's ▶ button).
-    from align_crystal.instrument import build_diffractometer, la2ni7
+    from align_crystal.instrument import ControlParam, build_diffractometer, la2ni7
 
     # the sample is the crystal, in the innermost goniometer arm
     crystal = la2ni7(mosaic=60, at=[0, 0, 0], relative="gonio_phi")
-    diffractometer = build_diffractometer(crystal)
+    diffractometer = build_diffractometer(crystal, ControlParam(ei=14))  # ei: incident energy, meV
     MODE = "from_beam"  # "full": one run | "dump": split part 1 | "from_beam": split part 2
 
     if MODE == "full":
         h5_file = run(
             config=diffractometer,
             ncount=1e6,
-            energy_meV=14,
             omega="-48,73",  # scan omega
             chi=-5.893,
             phi=0.0,
@@ -204,12 +206,11 @@ if __name__ == "__main__":
         )
         print(f"Wrote {h5_file}")
     elif MODE == "dump":
-        print(f"Wrote {dump_beam(ncount=1e8, config=diffractometer, energy_meV=14)}")
+        print(f"Wrote {dump_beam(ncount=1e8, config=diffractometer)}")
     elif MODE == "from_beam":
         h5_file = run_from_beam(
             omegas=range(-48, 74),
             config=diffractometer,
-            energy_meV=14,
             chi=-5.893,
             phi=0.0,
         )

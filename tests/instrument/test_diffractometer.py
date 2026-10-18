@@ -22,7 +22,7 @@ def test_the_default_file_names_the_components_in_beam_order(diffractometer):
 def test_from_dict_then_to_dict_roundtrip(diffractometer):
     cfg = diffractometer()
     data = to_dict(cfg)
-    assert list(data)[:3] == ["name", "params", "origin"]
+    assert list(data)[:4] == ["instrument", "name", "params", "origin"]
     assert list(data["slit"]) == [
         "component",
         "xwidth",

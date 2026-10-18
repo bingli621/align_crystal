@@ -110,8 +110,8 @@ _CONFIGURE = {
 
 
 def build_instrument(config, input_path=OUTPUT_DIR):
-    """Return a McStasScript instrument with the components of `config` (a
-    `SingleCrystalDiffractometer`) added in their order."""
+    """Return a McStasScript instrument with the components of `config` (any `Instrument`, e.g.
+    a `SingleCrystalDiffractometer`) added in their order, and its instrument parameters."""
     Path(input_path).mkdir(parents=True, exist_ok=True)
     inst = instr.McStas_instr(config.name, input_path=str(input_path))
     _add_instrument_parameters(inst, config)

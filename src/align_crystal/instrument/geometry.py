@@ -4,7 +4,7 @@ them.
 A component sits at `at` (m) in the frame of the component named `relative` (None: the lab frame),
 rotated by `rotated` (deg: about x, then y, then z) relative to that one, as McStas AT and ROTATED
 with RELATIVE. A value may be a McStas expression of instrument parameters ("-chi"; see
-`utils.evaluate`): `params` gives them. A rotation is McStas's (`rot_set_rotation` in
+`utils.evaluate`): `instr_param_dict` gives them. A rotation is McStas's (`rot_set_rotation` in
 mccode-r.c): the matrix from the lab frame to the component's own frame.
 """
 
@@ -26,14 +26,20 @@ def rotation(rx, ry, rz) -> np.ndarray:
     )
 
 
-def place(components: dict, params: dict) -> dict:
-    """The (position, rotation) of each component (by name) in the lab frame: position in m,
-    rotation lab -> its frame. `components` are in order (one placed `relative` to another comes
-    after it); `params` are the instrument parameters by name."""
-    placed = {}
+def place_absolute(components: dict, instr_param_dict: dict) -> dict:
+    """Each component placed ABSOLUTE: its `at`/`rotated` RELATIVE chain followed back to the lab
+    frame, as McStas does. A dict by name of (position, rotation): position in m, rotation the
+    matrix lab -> its frame.
+
+    `components` (name -> component) are in order: one placed `relative` to another comes after
+    it. `instr_param_dict` (McStas name -> value) gives the instrument parameters that the `at`
+    and `rotated` expressions name ("omega", "-chi")."""
+    at_rotated_absolute_dict = {}
     for name, c in components.items():
-        parent_pos, parent_rot = placed[c.relative] if c.relative else (np.zeros(3), np.eye(3))
-        at = np.array([evaluate(v, params) for v in c.at], float)
-        rot = rotation(*(evaluate(v, params) for v in c.rotated)) @ parent_rot
-        placed[name] = (parent_pos + parent_rot.T @ at, rot)
-    return placed
+        parent_pos, parent_rot = (
+            at_rotated_absolute_dict[c.relative] if c.relative else (np.zeros(3), np.eye(3))
+        )
+        at = np.array([evaluate(v, instr_param_dict) for v in c.at], float)
+        rot = rotation(*(evaluate(v, instr_param_dict) for v in c.rotated)) @ parent_rot
+        at_rotated_absolute_dict[name] = (parent_pos + parent_rot.T @ at, rot)
+    return at_rotated_absolute_dict

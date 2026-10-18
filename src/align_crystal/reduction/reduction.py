@@ -17,7 +17,7 @@ Q_GRAPH = {
 
 
 def wavelength(energy_meV):
-    """The neutron wavelength of `energy_meV` (e.g. the diffractometer's `params["ei"]`), as a scipp
+    """The neutron wavelength of `energy_meV` (e.g. the diffractometer's `params.ei`), as a scipp
     scalar in angstrom: lambda[A] = sqrt(81.80421 / E[meV])."""
     return sc.scalar(float(np.sqrt(81.80421 / energy_meV)), unit="angstrom")
 

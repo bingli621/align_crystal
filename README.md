@@ -17,12 +17,14 @@ src/align_crystal/   the library (installed)
                       one), with their CIF files (La2Ni7.cif)
     params.py         InstrParam: one instrument parameter
     geometry.py       rotation, place: the components' positions in the lab frame, as McStas places them
+    utils.py          evaluate: a McStas expression of instrument parameters ("-chi"), safely;
+                      format_value: a value short, for display
     diffractometer.py this instrument, SingleCrystalDiffractometer(sample, ei, omega, chi, phi):
                       makes its own components around the sample, each recording where it sits;
                       positions() gives where they are in the lab frame
   io/           files of the instrument (an adapter around the entities)
     dict_io.py        to_dict, from_dict: the diffractometer to and from its nested dict; over_default
-    yaml_io.py        the only module that knows YAML: yaml_loader, write_yaml, load(file, sample, **params)
+    yaml_io.py        the only module that knows YAML: yaml_loader, write_yaml, load(file, sample, params)
     params.yaml       the default diffractometer saved; it names the components in beam order
   mcstas/       everything that talks to McStas
     builder.py        builds the McStasScript instrument from the diffractometer (goniometer: omega Y, chi -Z, phi X)
@@ -48,14 +50,14 @@ reciprocal vectors) is computed when used. `print(d)` shows a summary (the param
 parameters, and a table of the components: where each sits and its position); `print(d.source)` shows
 one component's values.
 
-A parameters file is laid over the default one with `load(file, sample, **params)`
+A parameters file is laid over the default one with `load(file, sample, params)`
 (`io/yaml_io.py`), so it need hold only what differs: a value it gives wins, one it
 leaves out, or sets to `null`, stays as made. Its layout is that of
 `src/align_crystal/io/params.yaml`, the default diffractometer saved (a test keeps them equal): `params` (see below) and one
 section per component name: its `component` (the McStas component),
 its parameters, where it sits (`at`, `rotated`, `relative`), and last its `position` in the lab
 frame (m; calculated with the diffractometer's angles, written for reading and never read back:
-`d.positions()` gives them, `d.positions(omega=30)` at other angles). Save your own with
+`d.positions()` gives them). Save your own with
 `write_yaml(to_dict(d), "copy.yaml")`, edit it, and load it with `load("copy.yaml")`.
 
 The parameters are one nested dict (`io/dict_io.py`). The source aims at the component it focuses on
@@ -64,9 +66,10 @@ file.
 
 The sample (a `Single_crystal`, or None) and the params, the incident energy `ei` (meV) and the
 goniometer angles `omega`, `chi`, `phi` (deg), are given when the instrument is made,
-`SingleCrystalDiffractometer(sample, ei=14, omega=0)`; by default 14 meV and all angles 0. The params
-are kept in one place: `d.params` gives a copy of them, `d.update_params(ei=25)` changes them, and
-the file holds them in its `params` section.
+`SingleCrystalDiffractometer(sample, Params(ei=14, omega=0))`; by default 14 meV and all angles 0.
+`Params` is a frozen dataclass: `d.params.ei` reads one, `d.params.ei = 25` raises, and
+`d.update_params(ei=25)` changes them (an unknown name raises). The file holds them in its `params`
+section.
 
 The instrument parameters (`d.instr_params`, a list of `InstrParam`) are what McStas gets, calculated
 from the params when used (never saved): the wavelength of `ei` (`Source_simple.wavelength_from_ei`; the source's
@@ -91,12 +94,12 @@ slit:
 
 ```python
 from align_crystal.mcstas.simulater import run
-from align_crystal.instrument import SingleCrystalDiffractometer
+from align_crystal.instrument import Params, SingleCrystalDiffractometer
 from align_crystal.io import load
 
 # config: the diffractometer to simulate, the default one with the file laid over it
 h5 = run(
-    config=load("my_params.yaml", ei=14),
+    config=load("my_params.yaml", params=Params(ei=14)),
     omega="-48,73",
     chi=0,
     phi=0,
@@ -108,7 +111,7 @@ from align_crystal.instrument import la2ni7
 
 h5 = run(
     config=SingleCrystalDiffractometer(
-        la2ni7(mosaic=60, at=[0, 0, 0], relative="gonio_phi"), ei=14
+        la2ni7(mosaic=60, at=[0, 0, 0], relative="gonio_phi"), Params(ei=14)
     ),
     omega="-48,73",
     chi=-5.893,
@@ -120,15 +123,15 @@ h5 = run(
 A diffractometer can be created in these ways:
 
 ```python
-from align_crystal.instrument import SingleCrystalDiffractometer, la2ni7
+from align_crystal.instrument import Params, SingleCrystalDiffractometer, la2ni7
 from align_crystal.io import from_dict, load, to_dict, write_yaml, yaml_loader
 
 # the default one, made in code (instrument/diffractometer.py)
 d = SingleCrystalDiffractometer()
-d = SingleCrystalDiffractometer(la2ni7(at=[0, 0, 0], relative="gonio_phi"), ei=14)
+d = SingleCrystalDiffractometer(la2ni7(at=[0, 0, 0], relative="gonio_phi"), Params(ei=14))
 # with a file laid over it (read with a loader: YAML by default)
 d = load("my_params.yaml")
-d = load("my_params.yaml", loader=yaml_loader, ei=14)
+d = load("my_params.yaml", params=Params(ei=14), loader=yaml_loader)
 # from a complete dict
 d = from_dict(to_dict(d))
 # change it

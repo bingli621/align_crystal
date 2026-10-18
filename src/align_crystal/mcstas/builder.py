@@ -128,7 +128,7 @@ def build_instrument(config, input_path=OUTPUT_DIR):
 if __name__ == "__main__":
     from align_crystal.instrument import SingleCrystalDiffractometer
 
-    inst = build_instrument(SingleCrystalDiffractometer(ei=14))
+    inst = build_instrument(SingleCrystalDiffractometer())
     inst.show_parameters()
     inst.show_components()
     inst.show_diagram()

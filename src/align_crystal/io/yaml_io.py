@@ -9,6 +9,7 @@ from pathlib import Path
 
 import yaml
 
+from ..instrument import DEFAULT_PARAMS, Params
 from .dict_io import over_default
 
 PARAMS_FILE = Path(__file__).parent / "params.yaml"  # the default diffractometer saved: a reference
@@ -26,8 +27,8 @@ def write_yaml(data: dict, path) -> None:
         yaml.safe_dump(data, f, sort_keys=False)
 
 
-def load(file, sample=None, loader=yaml_loader, **params):
-    """The diffractometer made with `sample` and `params` (ei, omega, chi, phi; see
+def load(file, sample=None, params: Params = DEFAULT_PARAMS, loader=yaml_loader):
+    """The diffractometer made with `sample` and `params` (see
     `SingleCrystalDiffractometer`), with the parameters `file` laid over it, read with `loader` (a
     function from a path to the nested dict; default: YAML)."""
-    return over_default(loader(file), sample, **params)
+    return over_default(loader(file), sample, params)

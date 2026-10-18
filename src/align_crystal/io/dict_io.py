@@ -13,7 +13,7 @@ value it gives wins, one it leaves out or sets to null stays as made.
 import copy
 from dataclasses import asdict
 
-from ..instrument import SingleCrystalDiffractometer
+from ..instrument import DEFAULT_PARAMS, Params, SingleCrystalDiffractometer
 from ..instrument.components import COMPONENTS
 
 # the fields of a component that say where it sits: last in its section, in this order
@@ -49,7 +49,7 @@ def to_dict(d: SingleCrystalDiffractometer) -> dict:
             **placement,
             POSITION: [round(x, 9) + 0.0 for x in positions[name]],  # + 0.0: no -0.0
         }
-    return {"name": d.name, "params": dict(d.params), **sections}
+    return {"name": d.name, "params": asdict(d.params), **sections}
 
 
 def from_dict(data: dict) -> SingleCrystalDiffractometer:
@@ -57,17 +57,19 @@ def from_dict(data: dict) -> SingleCrystalDiffractometer:
     order of its sections does not matter: the diffractometer of its `params`, with the
     components of its sections (no sample if it has none)."""
     data = copy.deepcopy(data)
-    d = SingleCrystalDiffractometer(**data["params"])
+    d = SingleCrystalDiffractometer(params=Params(**data["params"]))
     d.name = data["name"]
     for name, c in components(data).items():
         setattr(d, name, c)
     return d
 
 
-def over_default(data: dict, sample=None, **params) -> SingleCrystalDiffractometer:
-    """The diffractometer made with `sample` and `params` (ei, omega, chi, phi; see
-    `SingleCrystalDiffractometer`), with `data` (only what differs) laid over it."""
-    return from_dict(merge(to_dict(SingleCrystalDiffractometer(sample, **params)), data))
+def over_default(
+    data: dict, sample=None, params: Params = DEFAULT_PARAMS
+) -> SingleCrystalDiffractometer:
+    """The diffractometer made with `sample` and `params` (see `SingleCrystalDiffractometer`), with
+    `data` (only what differs) laid over it."""
+    return from_dict(merge(to_dict(SingleCrystalDiffractometer(sample, params)), data))
 
 
 def components(data: dict, classes: dict = COMPONENTS) -> dict:

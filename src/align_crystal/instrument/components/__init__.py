@@ -13,10 +13,11 @@ crystal.py   Single_crystal (ready-made ones: instrument/samples/)
 
 from .crystal import Single_crystal
 from .detector import Monitor, Monitor_nD
-from .misc import Arm, Component, Progress_bar, Slit, short
+from .misc import Arm, Component, Progress_bar, Slit
 from .source import Source_simple
 
-# every component class by its McStas component name: what a section's `component:` in a parameters file refers to
+# every component class by its McStas component name: what a section's `component:` in a
+# parameters file refers to
 COMPONENTS = {
     c.__name__: c
     for c in (
@@ -40,5 +41,4 @@ __all__ = [
     "Single_crystal",
     "Slit",
     "Source_simple",
-    "short",
 ]

@@ -2,14 +2,7 @@
 
 from dataclasses import dataclass, field, fields
 
-
-def short(value) -> str:
-    """`value` short: a number with at most 6 significant digits, a list of them in brackets."""
-    if isinstance(value, list):
-        return "[" + ", ".join(short(v) for v in value) + "]"
-    if isinstance(value, float | int) and not isinstance(value, bool):
-        return f"{value:.6g}"
-    return str(value)
+from align_crystal.instrument.utils import format_value
 
 
 @dataclass(kw_only=True, repr=False)  # repr: its own, below; each subclass keeps it
@@ -35,15 +28,11 @@ class Component:
     relative: str | None = None
 
     def __repr__(self):
-        """Its McStas component and its values, one per line: "name = value"."""
-        names = [f.name for f in fields(self)]
-        width = max(len(n) for n in names)
-        return "\n".join(
-            [
-                f"{type(self).__name__}:",
-                *(f"  {n:<{width}} = {short(getattr(self, n))}" for n in names),
-            ]
-        )
+        """Its McStas component and its values, as a table: one row per value."""
+        from tabulate import tabulate  # only when printed: importing does not need it
+
+        rows = [(f.name, format_value(getattr(self, f.name))) for f in fields(self)]
+        return f"{type(self).__name__}:\n{tabulate(rows, ('parameter', 'value'))}"
 
 
 @dataclass(kw_only=True, repr=False)  # repr: Component's

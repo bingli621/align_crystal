@@ -1,16 +1,18 @@
 """The single-crystal diffractometer: source -> slit -> incident monitor -> goniometer (three
 nested arms) + sample -> detector.
 
-`SingleCrystalDiffractometer(sample, ei, omega, chi, phi)` makes its own components (the
-defaults, set in `__init__`; lengths in m, angles in deg) around the `sample`. Its params (`ei` and
-the goniometer angles) are kept in one place, read with `params` and changed with `update_params`;
-the instrument parameters McStas gets (`instr_params`: the wavelength of `ei`, and the angles) are
-calculated from them when used, and so are the components' positions in the lab frame
-(`positions`).
+`SingleCrystalDiffractometer(sample, params)` makes its own components (the defaults, set in
+`__init__`; lengths in m, angles in deg) around the `sample`. Its control parameters, `Params`
+(`ei` and the goniometer angles), are kept in one place: read with `params` (frozen), changed with
+`update_params`. The instrument parameters McStas gets (`instr_params`: the wavelength of `ei`,
+and the angles) are calculated from them when used, and so are the components' positions in the
+lab frame (`positions`).
 
 It knows no dicts or files: io/ converts it to and from its nested dict and a YAML file. No McStas
 knowledge: mcstas/builder.py builds the McStas instrument from it.
 """
+
+from dataclasses import asdict, dataclass, field, fields, replace
 
 from align_crystal.instrument.components import (
     Arm,
@@ -21,12 +23,24 @@ from align_crystal.instrument.components import (
     Single_crystal,
     Slit,
     Source_simple,
-    short,
 )
 from align_crystal.instrument.geometry import place
 from align_crystal.instrument.params import InstrParam
+from align_crystal.instrument.utils import format_value
 
-PARAM_UNITS = {"ei": "meV", "omega": "deg", "chi": "deg", "phi": "deg"}
+
+@dataclass(frozen=True)
+class Params:
+    """The control parameters of the diffractometer: what you set on it. Frozen: change them with
+    `SingleCrystalDiffractometer.update_params`. Each field's `unit` is in its metadata."""
+
+    ei: float = field(default=14.0, metadata={"unit": "meV"})  # incident energy
+    omega: float = field(default=0.0, metadata={"unit": "deg"})  # goniometer rotation about +Y
+    chi: float = field(default=0.0, metadata={"unit": "deg"})  # goniometer rotation about -Z
+    phi: float = field(default=0.0, metadata={"unit": "deg"})  # goniometer rotation about +X
+
+
+DEFAULT_PARAMS = Params()  # frozen, so one shared default is safe
 
 
 class SingleCrystalDiffractometer:
@@ -38,7 +52,7 @@ class SingleCrystalDiffractometer:
     the name of an instrument parameter instead, or an expression of them ("-chi"), as in McStas.
     """
 
-    # set by `__init__`, in the order of the beam
+    # the attributes, for type hints; `__init__` sets them, and its order is the beam's
     name: str
     origin: Progress_bar
     source: Source_simple
@@ -51,18 +65,11 @@ class SingleCrystalDiffractometer:
     sample: Single_crystal | None
     detector: Monitor_nD
 
-    def __init__(
-        self,
-        sample: Single_crystal | None = None,
-        ei: float = 14.0,
-        omega: float = 0.0,
-        chi: float = 0.0,
-        phi: float = 0.0,
-    ):
+    def __init__(self, sample: Single_crystal | None = None, params: Params = DEFAULT_PARAMS):
         """The default diffractometer (lengths in m, angles in deg) around `sample` (e.g.
-        `la2ni7(at=[0, 0, 0], relative="gonio_phi")`; None: none), with the incident energy `ei`
-        (meV) and the goniometer angles `omega`, `chi`, `phi` (deg); a run may give its own angles."""
-        self._params = {"ei": ei, "omega": omega, "chi": chi, "phi": phi}
+        `la2ni7(at=[0, 0, 0], relative="gonio_phi")`; None: none), with its control parameters
+        `params` (e.g. `Params(ei=25, omega=30)`; a run may give its own angles)."""
+        self._params = params
         self.name = "single_crystal_diffractometer"  # the McStas instrument name
         self.origin = Progress_bar(at=[0, 0, 0])
         self.source = Source_simple(
@@ -96,77 +103,84 @@ class SingleCrystalDiffractometer:
         )
 
     @property
-    def params(self) -> dict:
-        """A copy of the params by name: `ei` (meV), `omega`, `chi`, `phi` (deg). Changing it
-        changes nothing; `update_params` does."""
-        return dict(self._params)
+    def params(self) -> Params:
+        """Its control parameters (frozen: `update_params` changes them)."""
+        return self._params
 
     def update_params(self, **values):
-        """Change params, e.g. `update_params(ei=25)`. Raises on a name that is not one."""
-        unknown = set(values) - set(self._params)
-        if unknown:
-            raise ValueError(f"Unknown param(s): {', '.join(sorted(unknown))}")
-        self._params.update(values)
+        """Change control parameters, e.g. `update_params(ei=25)`; an unknown name raises."""
+        self._params = replace(self._params, **values)
 
     @property
     def instr_params(self) -> list[InstrParam]:
         """The instrument parameters (McStas instrument parameters), from the params: the
         wavelength of `ei`, and the goniometer angles."""
         p = self._params
+        wavelength = Source_simple.wavelength_from_ei(p.ei)
         return [
-            InstrParam(
-                "wavelength",
-                Source_simple.wavelength_from_ei(p["ei"]),
-                "angstrom",
-                "neutron wavelength",
-            ),
-            InstrParam("omega", p["omega"], "deg", "goniometer rotation about +Y"),
-            InstrParam("chi", p["chi"], "deg", "goniometer rotation about -Z"),
-            InstrParam("phi", p["phi"], "deg", "goniometer rotation about +X"),
+            InstrParam("wavelength", wavelength, "angstrom", "neutron wavelength"),
+            InstrParam("omega", p.omega, "deg", "goniometer rotation about +Y"),
+            InstrParam("chi", p.chi, "deg", "goniometer rotation about -Z"),
+            InstrParam("phi", p.phi, "deg", "goniometer rotation about +X"),
         ]
 
     @property
     def components(self) -> dict[str, Component]:
-        """The components by name, in the order of the beam (no sample if there is none)."""
-        names = [n for n in SingleCrystalDiffractometer.__annotations__ if n != "name"]
-        return {n: getattr(self, n) for n in names if getattr(self, n) is not None}
+        """The components by name, in the order of the beam (no sample if there is none): its
+        attributes that are components, in the order `__init__` first sets them."""
+        return {n: v for n, v in vars(self).items() if isinstance(v, Component)}
 
-    def positions(self, **values) -> dict[str, list[float]]:
-        """The position of each component (by name) in the lab frame, m, from its `at`, `rotated`
-        and `relative`: with the angles of `instr_params`, or `values` (McStas name -> value) in
-        place of them."""
-        values = {p.name: p.value for p in self.instr_params} | values
-        return {n: pos.tolist() for n, (pos, _) in place(self.components, values).items()}
+    def positions(self) -> dict[str, list[float]]:
+        """The position of each component (by name) in the lab frame, m, at its angles."""
+        angles = {p.name: p.value for p in self.instr_params}
+        placed = place(self.components, angles)  # name -> (position, rotation)
+        return {name: position.tolist() for name, (position, _rotation) in placed.items()}
 
     def __repr__(self):
         """A summary to read: the params, the instrument parameters, and the components in the
         order of the beam (where each sits, and its position in the lab frame; a component's own
         repr shows its values)."""
-        lines = [f"Single crystal diffractometer {self.name!r}", "", "Params:"]
-        lines += [f"  {k:<6} {short(v):>8} {PARAM_UNITS[k]}" for k, v in self._params.items()]
-        lines += ["", "Instrument parameters (McStas):"]
-        lines += [
-            f"  {p.name:<10} {short(p.value):>8} {p.unit:<8} {p.comment}" for p in self.instr_params
+        from tabulate import tabulate  # only when printed: importing does not need it
+
+        values = asdict(self._params)
+        params = [
+            (f.name, format_value(values[f.name]), f.metadata["unit"]) for f in fields(Params)
         ]
-        lines += ["", "Components, in the order of the beam (m, deg):"]
+        instr_params = [
+            (p.name, format_value(p.value), p.unit, p.comment) for p in self.instr_params
+        ]
         positions = self.positions()
-        rows = [("name", "component", "at", "rotated", "relative", "position")]
+        components = []
         for name, c in self.components.items():
-            rows.append(
-                (name, type(c).__name__, short(c.at), short(c.rotated), c.relative or "-",
-                 short(positions[name]))
-            )  # fmt: skip
-        widths = [max(len(row[i]) for row in rows) for i in range(len(rows[0]))]
-        for row in rows:
-            lines.append("  " + "  ".join(f"{x:<{w}}" for x, w in zip(row, widths)).rstrip())
-        return "\n".join(lines)
+            where = (
+                format_value(c.at),
+                format_value(c.rotated),
+                c.relative or "-",
+                format_value(positions[name]),
+            )
+            components.append((name, type(c).__name__, *where))
+        return "\n".join(
+            [
+                f"Single crystal diffractometer {self.name!r}",
+                "",
+                "Params:",
+                tabulate(params, ("param", "value", "unit")),
+                "",
+                "Instrument parameters (McStas):",
+                tabulate(instr_params, ("name", "value", "unit", "comment")),
+                "",
+                "Components, in the order of the beam (m, deg):",
+                tabulate(
+                    components, ("name", "component", "at", "rotated", "relative", "position")
+                ),
+            ]
+        )
 
     def __eq__(self, other):  # also makes it unhashable: its components can be changed
-        return type(other) is type(self) and (self.name, self._params, self.components) == (
-            other.name,
-            other._params,
-            other.components,
-        )
+        if type(other) is not type(self):
+            return False
+        mine = (self.name, self._params, self.components)
+        return mine == (other.name, other._params, other.components)
 
 
 if __name__ == "__main__":
@@ -176,5 +190,6 @@ if __name__ == "__main__":
 
     diffractometer = SingleCrystalDiffractometer(sample)
     print(diffractometer)
+    print(diffractometer.params)
     print(diffractometer.source)
     print(sample)

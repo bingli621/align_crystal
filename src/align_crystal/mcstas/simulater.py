@@ -40,11 +40,12 @@ def run(
     custom_flags=None,
     **instr_params,
 ):
-    """Run a simulation; `config` is the `SingleCrystalDiffractometer` to simulate. `instr_params` are
-    its instrument parameters for this run, by McStas name: omega, chi, phi (deg; the diffractometer's unless given). The
-    `wavelength` (angstrom) is one of them: the one of the diffractometer's ei unless the run gives
-    it. Output goes to `output_path/mccode.h5`. `custom_flags` is passed to
-    mcrun; with "-N 3" an instrument parameter given as "min,max" (e.g. omega="3,5") is scanned over 3 points."""
+    """Run a simulation; `config` is the `SingleCrystalDiffractometer` to simulate. `instr_params`
+    are its instrument parameters for this run, by McStas name: omega, chi, phi (deg; the
+    diffractometer's unless given). The `wavelength` (angstrom) is one of them: the one of the
+    diffractometer's ei unless the run gives it. Output goes to `output_path/mccode.h5`.
+    `custom_flags` is passed to mcrun; with "-N 3" an instrument parameter given as "min,max" (e.g.
+    omega="3,5") is scanned over 3 points."""
     shutil.rmtree(output_path, ignore_errors=True)  # always start from a clean folder
     inst = build_instrument(config)
     inst.settings(
@@ -113,10 +114,10 @@ def run_from_beam(
     """Part 2 of a split run, can be done any time later (even in another session): simulate
     `sample_pos` -> sample -> detector for every omega, all starting from the same beam file made
     by `dump_beam`, with the angles running in parallel (`n_jobs` single-process mcrun jobs at a
-    time, default: all cores). `instr_params` are the other instrument parameters, the same for every
-    omega: chi, phi (deg; the diffractometer's unless given); the wavelength must be the one of the beam file. Returns
-    the path of `<output_path>/mccode.h5`, one file with an entry per omega (`entry1`, `entry2`,
-    ... in the order of `omegas`).
+    time, default: all cores). `instr_params` are the other instrument parameters, the same for
+    every omega: chi, phi (deg; the diffractometer's unless given); the wavelength must be the one
+    of the beam file. Returns the path of `<output_path>/mccode.h5`, one file with an entry per
+    omega (`entry1`, `entry2`, ... in the order of `omegas`).
 
     The number of neutrons is the number in the beam file (`ncount` is ignored). Each angle is
     run in a single process, with MPI the ranks would all repeat the same neutrons. Each angle gets
@@ -177,11 +178,11 @@ def run_from_beam(
 
 if __name__ == "__main__":
     # Edit the settings below and run this file (e.g. with VS Code's ▶ button).
-    from align_crystal.instrument import SingleCrystalDiffractometer, la2ni7
+    from align_crystal.instrument import Params, SingleCrystalDiffractometer, la2ni7
 
     # the sample, in the innermost goniometer arm; ei: incident energy, meV
     sample = la2ni7(mosaic=60, at=[0, 0, 0], relative="gonio_phi")
-    diffractometer = SingleCrystalDiffractometer(sample, ei=14)
+    diffractometer = SingleCrystalDiffractometer(sample, Params(ei=14))
     MODE = "from_beam"  # "full": one run | "dump": split part 1 | "from_beam": split part 2
 
     if MODE == "full":

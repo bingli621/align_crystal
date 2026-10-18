@@ -43,7 +43,7 @@ def test_the_source_focuses_at_the_distance_of_its_focus_on(tmp_path, diffractom
 
 def test_the_sample_of_the_diffractometer_sets_the_mcstas_crystal(tmp_path):
     sample = la2ni7(mosaic=60, at=[0, 0, 0], relative="gonio_phi")
-    cfg = SingleCrystalDiffractometer(sample, ei=14)
+    cfg = SingleCrystalDiffractometer(sample)
     inst = build_instrument(cfg, input_path=tmp_path)
     crystal = next(c for c in inst.component_list if c.name == "sample")
     assert crystal.mosaic == 60 and cfg.sample.reflections in crystal.reflections

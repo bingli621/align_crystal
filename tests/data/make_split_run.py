@@ -19,7 +19,7 @@ CRYSTAL = {"mosaic": 60, "at": [0, 0, 0], "relative": "gonio_phi"}
 if __name__ == "__main__":
     work = HERE.parent / "_split_run_work"
     shutil.rmtree(work, ignore_errors=True)
-    diffractometer = SingleCrystalDiffractometer(la2ni7(**CRYSTAL), ei=14)
+    diffractometer = SingleCrystalDiffractometer(la2ni7(**CRYSTAL))  # 14 meV
     beam = dump_beam(output_path=work / "beam", ncount=2e4, config=diffractometer)
     run_from_beam(
         omegas=[-5, 5],

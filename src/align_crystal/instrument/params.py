@@ -1,9 +1,9 @@
 """The parameters of an instrument: InstrParam.
 
-InstrParam: one instrument parameter, which McStas takes and a run may set; an instrument has a list
-of them (each with its value, unit and comment), which the diffractometer calculates from its params.
-The components are general: a component value that one gives is the parameter's name
-instead of a number, as in McStas (`rotated: [0, "omega", 0]`).
+InstrParam: one instrument parameter, which McStas takes and a run may set; an instrument has a
+list of them (each with its value, unit and comment), which the diffractometer calculates from its
+params. The components are general: a component value that one gives is the parameter's name (or
+an expression of them) instead of a number, as in McStas (`rotated: [0, "omega", 0]`).
 `SingleCrystalDiffractometer.instr_params` gives those of the diffractometer.
 
 (The design parameters are the components' own values; how they are stored in a file is the io

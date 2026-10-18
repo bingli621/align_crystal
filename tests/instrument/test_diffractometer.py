@@ -1,10 +1,11 @@
 import subprocess
 import sys
+from dataclasses import FrozenInstanceError
 
 import pytest
 
+from align_crystal.instrument import Params, Source_simple, aluminum
 from align_crystal.instrument import SingleCrystalDiffractometer as Diffractometer
-from align_crystal.instrument import Source_simple, aluminum
 from align_crystal.io import from_dict, to_dict
 
 
@@ -42,7 +43,7 @@ def test_the_instrument_parameters_of_the_diffractometer(diffractometer):
 
 
 def test_the_wavelength_is_the_one_of_ei(diffractometer):
-    assert diffractometer().params["ei"] == 14  # given when the instrument was made
+    assert diffractometer().params.ei == 14  # given when the instrument was made
     assert diffractometer().instr_params[0].value == pytest.approx(2.417262, abs=1e-5)
     from_file = diffractometer({"params": {"ei": 25}})  # a file's ei: the wavelength follows
     assert from_file.instr_params[0].value == pytest.approx(1.808914, abs=1e-5)
@@ -61,23 +62,23 @@ def test_core_imports_no_yaml_and_no_adapter():
 
 
 def test_the_params_are_given_when_it_is_made():
-    assert dict(Diffractometer().params) == {"ei": 14, "omega": 0, "chi": 0, "phi": 0}  # defaults
-    d = Diffractometer(ei=25, omega=30)
-    assert d.params["ei"] == 25
+    assert Diffractometer().params == Params(ei=14, omega=0, chi=0, phi=0)  # the defaults
+    d = Diffractometer(params=Params(ei=25, omega=30))
+    assert d.params.ei == 25
     values = {p.name: p.value for p in d.instr_params}
     assert (values["omega"], values["chi"], values["phi"]) == (30, 0, 0)
 
 
 def test_the_params_change_only_with_update_params():
     d = Diffractometer()
-    d.params["ei"] = 25  # a copy: the diffractometer does not change
-    assert d.params["ei"] == 14
+    with pytest.raises(FrozenInstanceError):
+        d.params.ei = 25  # frozen
     with pytest.raises(AttributeError):
         d.params = {"ei": 25}
     d.update_params(ei=25, omega=10)
     run = {p.name: p.value for p in d.instr_params}
     assert run["wavelength"] == pytest.approx(1.808914, abs=1e-5) and run["omega"] == 10
-    with pytest.raises(ValueError, match="omgea"):
+    with pytest.raises(TypeError, match="omgea"):
         d.update_params(omgea=1)
 
 
@@ -90,7 +91,7 @@ def test_the_positions_follow_the_relative_frames_and_the_angles():
     d = Diffractometer(sample)
     assert d.positions()["slit"] == pytest.approx([0, 0, 1.0])
     assert d.positions()["sample"] == pytest.approx([0, 0, 2.1])
-    assert d.positions(omega=90)["sample"] == pytest.approx([0.1, 0, 2.0])  # +z turned to +x
-    assert d.positions(omega=90, chi=90)["sample"] == pytest.approx([0.1, 0, 2.0])  # along chi
     d.update_params(omega=90)
-    assert d.positions()["sample"] == pytest.approx([0.1, 0, 2.0])  # the diffractometer's angle
+    assert d.positions()["sample"] == pytest.approx([0.1, 0, 2.0])  # +z turned to +x
+    d.update_params(chi=90)
+    assert d.positions()["sample"] == pytest.approx([0.1, 0, 2.0])  # along the chi axis

@@ -23,9 +23,7 @@ def diffractometer():
     """diffractometer(changes=None) -> the SingleCrystalDiffractometer of its default parameters
     (with the aluminium sample) with the nested dict `changes` applied (a null replaces the
     value)."""
-    default = to_dict(
-        SingleCrystalDiffractometer(aluminum(at=[0, 0, 0], relative="gonio_phi"), ei=14)
-    )
+    default = to_dict(SingleCrystalDiffractometer(aluminum(at=[0, 0, 0], relative="gonio_phi")))
 
     def make(changes=None):
         data = _update(copy.deepcopy(default), changes or {})

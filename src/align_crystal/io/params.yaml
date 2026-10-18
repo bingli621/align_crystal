@@ -3,16 +3,17 @@
 # makes, so it need hold only what differs: a value it gives wins, one it leaves out or sets to null
 # stays as made.
 # A value left null here is computed when used (the source's `dist`: the z of `focus_on`).
-name: align_crystal_diffractometer   # McStas instrument name
+name: single_crystal_diffractometer  # McStas instrument name
 
-# The instrument parameters: the McStas instrument parameters, declared without values: the wavelength
-# is calculated from the source's ei, the goniometer angles are given by each run. Where a component takes a number it may name one of these instead (or an
-# expression of them, "-chi"), as in McStas.
-instr_params:
-  wavelength: {value: null, unit: angstrom, comment: neutron wavelength}
-  omega:      {value: null, unit: deg, comment: goniometer rotation about +Y}
-  chi:        {value: null, unit: deg, comment: goniometer rotation about -Z}
-  phi:        {value: null, unit: deg, comment: goniometer rotation about +X}
+# The params of the diffractometer. McStas gets them as its instrument parameters (calculated, not
+# saved): the wavelength of ei, and the goniometer angles, unless a run gives its own. Where a
+# component takes a number it may name one of these instead (or an expression of them, "-chi"), as in
+# McStas.
+params:
+  ei: 14.0     # meV, incident energy
+  omega: 0.0   # deg, goniometer rotation about +Y
+  chi: 0.0     # deg, goniometer rotation about -Z
+  phi: 0.0     # deg, goniometer rotation about +X
 
 # One section per component name, in the order of the beam: the order in which the components are built (a
 # component can only be relative to one before it). Each has its `component` (the McStas component,
@@ -22,19 +23,18 @@ instr_params:
 origin:
   component: Progress_bar
   at: [0, 0, 0]
-  rotated: null
+  rotated: [0, 0, 0]
   relative: null
 
 source:                # monochromatic
   component: Source_simple
   lambda0: wavelength  # angstrom: the instrument parameter, calculated from ei unless a run sets it
-  ei: null             # meV: operational, given when the instrument is made (CtrlParam("ei", ...))
   radius: 0.03         # m
   focus_on: sample_pos # the component the source focuses on
   dist: null           # source -> focus plane, m; null = z of focus_on
   flux: 1.0e+10        # PyYAML needs the sign: 1.0e10 would load as a string
   at: [0, 0, 0]
-  rotated: null
+  rotated: [0, 0, 0]
   relative: origin
 
 slit:
@@ -42,19 +42,19 @@ slit:
   xwidth: 0.01         # opening and source focus, m
   yheight: 0.01
   at: [0, 0, 1.0]
-  rotated: null
+  rotated: [0, 0, 0]
   relative: source
 
 incident_monitor:      # integrated incident intensity; the neutrons carry on
   component: Monitor
   at: [0, 0, 1.9]      # 10 cm before the sample
-  rotated: null
+  rotated: [0, 0, 0]
   relative: source
 
 sample_pos:            # the beam hits the goniometer centre; the beam can be dumped here
   component: Arm
   at: [0, 0, 2.0]
-  rotated: null
+  rotated: [0, 0, 0]
   relative: source
 
 # Goniometer arms, outermost first, each rotated by an instrument parameter, so it can be scanned.
@@ -74,7 +74,7 @@ gonio_phi:
   rotated: [phi, 0, 0]      # about +X
   relative: gonio_chi
 
-crystal:               # a cube of a single crystal: here aluminium (aluminum() in instrument/components/sample.py), cubic axes along the lab axes
+sample:                # a cube of a single crystal: here aluminium (aluminum() in instrument/components/sample.py), cubic axes along the lab axes
   component: Single_crystal
   lattice_params: [4.0495, 4.0495, 4.0495, 90.0, 90.0, 90.0]   # a, b, c (angstrom), alpha, beta, gamma (deg)
   along_beam: [0, 0, 1]   # hkl along the beam (+z) when all goniometer angles are zero
@@ -86,7 +86,7 @@ crystal:               # a cube of a single crystal: here aluminium (aluminum() 
   order: 1             # single scattering only (no multiple scattering): much faster
   mosaic: 5.0         # arc minutes (Gaussian RMS)
   at: [0, 0, 0]
-  rotated: null
+  rotated: [0, 0, 0]
   relative: gonio_phi
 
 detector:              # cylindrical ("banana") detector around the vertical axis through the sample
@@ -97,5 +97,5 @@ detector:              # cylindrical ("banana") detector around the vertical axi
   n_theta: 1200
   n_y: 50
   at: [0, 0, 0]
-  rotated: null
+  rotated: [0, 0, 0]
   relative: sample_pos

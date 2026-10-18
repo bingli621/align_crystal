@@ -29,8 +29,8 @@ OUTPUT_DIR = Path(__file__).resolve().parents[3] / "mcstas_output"
 
 
 def _add_instrument_parameters(inst, cfg):
-    """One McStas instrument parameter per instrument parameter of `cfg`, with its calculated value,
-    if any (a run sets its own with `set_parameters`, and must set those without one)."""
+    """One McStas instrument parameter per instrument parameter of `cfg`, with its value (a run
+    sets its own with `set_parameters`)."""
     for p in cfg.instrument_param():
         inst.add_parameter(p.name, value=p.value, unit=p.unit, comment=p.comment)
 
@@ -42,8 +42,7 @@ def _place(inst, name, c):
     comp = inst.add_component(name, type(c).__name__, RELATIVE=rel or "ABSOLUTE")
     kw = {"RELATIVE": rel} if rel else {}
     comp.set_AT(list(c.at), **kw)
-    if c.rotated is not None:
-        comp.set_ROTATED(list(c.rotated), **kw)
+    comp.set_ROTATED(list(c.rotated), **kw)
     return comp
 
 
@@ -110,7 +109,6 @@ def build_instrument(config, input_path=OUTPUT_DIR):
     """Return a McStasScript instrument with the components of `config` (a
     `SingleCrystalDiffractometer`) added in their order."""
     Path(input_path).mkdir(parents=True, exist_ok=True)
-    config.validate()  # its components may have been changed since it was made
     inst = instr.McStas_instr(config.name, input_path=str(input_path))
     _add_instrument_parameters(inst, config)
     for (
@@ -124,9 +122,9 @@ def build_instrument(config, input_path=OUTPUT_DIR):
 
 
 if __name__ == "__main__":
-    from align_crystal.instrument import CtrlParam, SingleCrystalDiffractometer
+    from align_crystal.instrument import SingleCrystalDiffractometer
 
-    inst = build_instrument(SingleCrystalDiffractometer([CtrlParam("ei", 14, "meV")]))
+    inst = build_instrument(SingleCrystalDiffractometer(ei=14))
     inst.show_parameters()
     inst.show_components()
     inst.show_diagram()

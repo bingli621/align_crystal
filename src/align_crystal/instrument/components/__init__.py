@@ -1,9 +1,9 @@
 """The building blocks of an instrument: one dataclass per McStas component.
 
-They carry almost no defaults of their own (see instrument/model/diffractometer.py; Single_crystal has a few) and know nothing about files or
-McStas. A value a component can calculate from its own other values is derived in `__post_init__`
-when it is null; what depends on other components is left to the diffractometer's own
-`__post_init__` (see instrument/model/diffractometer.py).
+They carry almost no defaults of their own (see instrument/model/diffractometer.py; Single_crystal has a
+few) and know nothing about files or McStas. A value that follows from a component's own values is a
+property computed when used (the crystal's reciprocal vectors); one that depends on other components
+is left to the diffractometer (the source's focus distance, `source_dist`).
 
 misc.py     the base `Component`, and the simple ones: Progress_bar, Slit, Arm
 source.py    Source_simple

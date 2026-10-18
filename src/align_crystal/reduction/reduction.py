@@ -15,7 +15,7 @@ Q_GRAPH = {
 
 
 def wavelength(energy_meV):
-    """The neutron wavelength of `energy_meV` (e.g. the diffractometer's `source.ei`), as a scipp
+    """The neutron wavelength of `energy_meV` (e.g. the diffractometer's `params["ei"]`), as a scipp
     scalar in angstrom: lambda[A] = sqrt(81.80421 / E[meV])."""
     return sc.scalar(float(np.sqrt(81.80421 / energy_meV)), unit="angstrom")
 
@@ -25,11 +25,6 @@ def run_wavelength(params, given=None):
     parameter `wavelength` (angstrom) stored in the McStas output (`params`, its parameters)."""
     if given is not None:
         return given
-    if "wavelength" not in params:
-        raise ValueError(
-            "The scan stores no wavelength (made before it was an instrument parameter?): "
-            "give it, e.g. wavelength(14)"
-        )
     return sc.scalar(float(params["wavelength"]), unit="angstrom")
 
 

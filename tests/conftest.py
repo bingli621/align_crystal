@@ -3,7 +3,6 @@ import copy
 import pytest
 
 from align_crystal.instrument import (
-    CtrlParam,
     SingleCrystalDiffractometer,
     aluminum,
 )
@@ -22,15 +21,10 @@ def _update(base, changes):
 @pytest.fixture
 def diffractometer():
     """diffractometer(changes=None) -> the SingleCrystalDiffractometer of its default parameters
-    (with the aluminium sample) with the nested dict `changes` applied: a value null is set to
-    null, so it is checked."""
+    (with the aluminium sample) with the nested dict `changes` applied (a null replaces the
+    value)."""
     default = to_dict(
-        SingleCrystalDiffractometer(
-            [
-                CtrlParam("crystal", aluminum(at=[0, 0, 0], relative="gonio_phi")),
-                CtrlParam("ei", 14),
-            ]
-        )
+        SingleCrystalDiffractometer(aluminum(at=[0, 0, 0], relative="gonio_phi"), ei=14)
     )
 
     def make(changes=None):

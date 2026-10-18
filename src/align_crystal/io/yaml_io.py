@@ -26,7 +26,8 @@ def write_yaml(data: dict, path) -> None:
         yaml.safe_dump(data, f, sort_keys=False)
 
 
-def load(file, ctrl_params=(), loader=yaml_loader):
-    """The diffractometer made with `ctrl_params`, with the parameters `file` laid over it, read
-    with `loader` (a function from a path to the nested dict; default: YAML)."""
-    return over_default(loader(file), ctrl_params)
+def load(file, sample=None, loader=yaml_loader, **params):
+    """The diffractometer made with `sample` and `params` (ei, omega, chi, phi; see
+    `SingleCrystalDiffractometer`), with the parameters `file` laid over it, read with `loader` (a
+    function from a path to the nested dict; default: YAML)."""
+    return over_default(loader(file), sample, **params)

@@ -1,5 +1,4 @@
 from align_crystal.instrument import (
-    CtrlParam,
     SingleCrystalDiffractometer,
     aluminum,
     la2ni7,
@@ -14,22 +13,18 @@ def test_write_then_read_gives_the_same_dict(tmp_path):
 
 
 def test_the_diffractometer_has_no_sample_by_default():
-    crystal = la2ni7(at=[0, 0, 0], relative="gonio_phi")
-    assert SingleCrystalDiffractometer().crystal is None
-    assert "crystal" not in SingleCrystalDiffractometer().components
-    assert (
-        SingleCrystalDiffractometer([CtrlParam("crystal", crystal)]).crystal is crystal
-    )  # as it is
+    sample = la2ni7(at=[0, 0, 0], relative="gonio_phi")
+    assert SingleCrystalDiffractometer().sample is None
+    assert "sample" not in SingleCrystalDiffractometer().components
+    assert SingleCrystalDiffractometer(sample).sample is sample  # as it is
 
 
 def test_params_yaml_is_the_default_diffractometer_saved():
     """The reference file is the built one with an aluminium sample: laid over the one with no
     sample it gives the one the code makes with it, and over that one it changes nothing."""
     al = aluminum(at=[0, 0, 0], relative="gonio_phi")
-    assert load(PARAMS_FILE) == SingleCrystalDiffractometer([CtrlParam("crystal", al)])
-    assert load(PARAMS_FILE, [CtrlParam("crystal", al)]) == SingleCrystalDiffractometer(
-        [CtrlParam("crystal", al)]
-    )
+    assert load(PARAMS_FILE) == SingleCrystalDiffractometer(al)
+    assert load(PARAMS_FILE, al) == SingleCrystalDiffractometer(al)
 
 
 def test_a_file_is_laid_over_the_code(tmp_path):
@@ -48,12 +43,8 @@ def test_the_diffractometer_roundtrips_through_a_yaml_file(diffractometer, tmp_p
     write_yaml(to_dict(inst), tmp_path / "out.yaml")
     assert load(tmp_path / "out.yaml") == inst
     written = yaml_loader(tmp_path / "out.yaml")
-    assert written["source"]["ei"] == 14  # the operational parameter
-    assert written["instr_params"]["omega"] == {
-        "value": None,
-        "unit": "deg",
-        "comment": "goniometer rotation about +Y",
-    }
+    assert written["params"] == {"ei": 14, "omega": 0.0, "chi": 0.0, "phi": 0.0}
+    assert "ei" not in written["source"] and "instr_params" not in written  # not saved twice
 
 
 def test_numbers_in_the_yaml_are_numbers():
@@ -62,8 +53,6 @@ def test_numbers_in_the_yaml_are_numbers():
 
 
 def test_a_diffractometer_with_another_crystal_roundtrips_through_a_yaml_file(tmp_path):
-    inst = SingleCrystalDiffractometer(
-        [CtrlParam("crystal", la2ni7(mosaic=60, at=[0, 0, 0], relative="gonio_phi"))]
-    )
-    write_yaml(to_dict(inst), tmp_path / "la2ni7.yaml")  # the crystal holds plain floats
+    inst = SingleCrystalDiffractometer(la2ni7(mosaic=60, at=[0, 0, 0], relative="gonio_phi"))
+    write_yaml(to_dict(inst), tmp_path / "la2ni7.yaml")  # the sample holds plain floats
     assert load(tmp_path / "la2ni7.yaml") == inst

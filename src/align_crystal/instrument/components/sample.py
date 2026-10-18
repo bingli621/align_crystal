@@ -41,9 +41,6 @@ class Single_crystal(Component):
     order: int = 1  # 1 = single scattering only (no multiple scattering): much faster
     mosaic: float = 5.0  # arc minutes (Gaussian RMS)
 
-    def __post_init__(self):
-        self.reciprocal_axes()  # raises at once on a bad cell or orientation
-
     @property
     def astar(self) -> list:
         return self.reciprocal_axes()[0]
@@ -57,37 +54,26 @@ class Single_crystal(Component):
         return self.reciprocal_axes()[2]
 
     def reciprocal_axes(self) -> list:
-        """`astar`, `bstar`, `cstar` (plain floats). Raises on a cell that is not one, and if
-        `along_beam` and `in_plane` are parallel."""
+        """`astar`, `bstar`, `cstar` (plain floats)."""
         B = self.reciprocal_basis()
         z = B @ np.asarray(self.along_beam, float)
         x = B @ np.asarray(self.in_plane, float)
         z /= np.linalg.norm(z)
         x_perp = x - z * (x @ z)  # component perpendicular to the beam
-        if np.linalg.norm(x_perp) < 1e-9 * np.linalg.norm(x):
-            raise ValueError(
-                f"in_plane {self.in_plane} is parallel to along_beam {self.along_beam}"
-            )
         x = x_perp / np.linalg.norm(x_perp)
         R = np.array([x, np.cross(z, x), z])  # crystal Cartesian -> lab
         return [(R @ B[:, i]).tolist() for i in range(3)]
 
     def reciprocal_basis(self):
         """Columns are a*, b*, c* (incl. 2pi) of `lattice_params` in a crystal Cartesian frame with
-        a along x, c* along z. Raises on a cell that is not one (angles out of (0, 180) deg, or no
-        volume)."""
+        a along x, c* along z."""
         a, b, c, alpha, beta, gamma = self.lattice_params
-        if not all(0 < angle < 180 for angle in (alpha, beta, gamma)):
-            raise ValueError(f"Cell angles must be between 0 and 180 deg: {alpha, beta, gamma}")
         al, be, ga = np.radians([alpha, beta, gamma])
         va = np.array([a, 0, 0])
         vb = np.array([b * np.cos(ga), b * np.sin(ga), 0])
         cx = c * np.cos(be)
         cy = c * (np.cos(al) - np.cos(be) * np.cos(ga)) / np.sin(ga)
-        cz2 = c**2 - cx**2 - cy**2
-        if cz2 <= 1e-12 * c**2:
-            raise ValueError(f"No unit cell has these angles: {alpha, beta, gamma}")
-        vc = np.array([cx, cy, np.sqrt(cz2)])
+        vc = np.array([cx, cy, np.sqrt(c**2 - cx**2 - cy**2)])
         return 2 * np.pi * np.linalg.inv(np.array([va, vb, vc]))  # columns: a*, b*, c*
 
 

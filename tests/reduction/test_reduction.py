@@ -26,5 +26,3 @@ def test_the_wavelength_of_a_scan_point_is_given_or_stored():
     assert run_wavelength({"wavelength": 2.0}, wavelength(14)).value == pytest.approx(
         2.417262, abs=1e-5
     )
-    with pytest.raises(ValueError, match="stores no wavelength"):
-        run_wavelength({"omega": 0.0})

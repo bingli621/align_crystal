@@ -9,24 +9,14 @@ import h5py
 import numpy as np
 from mcstasscript.helper.managed_mcrun import ManagedMcrun
 
-from align_crystal.instrument import SingleCrystalDiffractometer, complete_values
 from align_crystal.mcstas.builder import OUTPUT_DIR, build_instrument
 
 
-def _instrument(config):
-    """The instrument to simulate: `config` must be a `SingleCrystalDiffractometer` (e.g.
-    `SingleCrystalDiffractometer([CtrlParam("ei", 14, "meV")])`)."""
-    if not isinstance(config, SingleCrystalDiffractometer):
-        raise TypeError(f"config must be a SingleCrystalDiffractometer, not {config!r}")
-    return config
-
-
 def _set_instr_params(inst, config, instr_params):
-    """Set the instrument parameters of a run on `inst`: those of `config`, with `instr_params` (McStas
-    name -> value) in place of the calculated ones. Raises on an unknown name and on an instrument parameter
-    left unset. A "min,max" string is an mcrun scan range: it is returned, not
-    set, since McStasScript's parameters only take numbers."""
-    values = complete_values(config.instrument_param(**instr_params))
+    """Set the instrument parameters of a run on `inst`: those of `config`, with `instr_params`
+    (McStas name -> value) in place of the diffractometer's. A "min,max" string is an mcrun scan
+    range: it is returned, not set, since McStasScript's parameters only take numbers."""
+    values = {p.name: p.value for p in config.instrument_param(**instr_params)}
     scans = {k: v for k, v in values.items() if isinstance(v, str)}
     inst.set_parameters(**{k: v for k, v in values.items() if k not in scans})
     return scans
@@ -51,12 +41,12 @@ def run(
     **instr_params,
 ):
     """Run a simulation; `config` is the `SingleCrystalDiffractometer` to simulate. `instr_params` are
-    its instrument parameters for this run, by McStas name: omega, chi, phi (deg, all three needed). The
-    `wavelength` (angstrom) is one of them: the diffractometer calculates it
-    unless the run gives it. Output goes to `output_path/mccode.h5`. `custom_flags` is passed to
+    its instrument parameters for this run, by McStas name: omega, chi, phi (deg; the diffractometer's unless given). The
+    `wavelength` (angstrom) is one of them: the one of the diffractometer's ei unless the run gives
+    it. Output goes to `output_path/mccode.h5`. `custom_flags` is passed to
     mcrun; with "-N 3" an instrument parameter given as "min,max" (e.g. omega="3,5") is scanned over 3 points."""
     shutil.rmtree(output_path, ignore_errors=True)  # always start from a clean folder
-    inst = build_instrument(_instrument(config))
+    inst = build_instrument(config)
     inst.settings(
         output_path=str(output_path),
         ncount=ncount,
@@ -80,21 +70,18 @@ def dump_beam(output_path=OUTPUT_DIR / "beam", ncount=1e8, mpi="auto", config=No
     """Part 1 of a split run: simulate source -> slit -> incident monitor -> `sample_pos` and dump
     the beam to an MCPL file. Run it once with a large `ncount`. Returns the path of the beam file
     (`<output_path>/beam.mcpl.gz`); the folder also has `mccode.h5` with the incident monitor.
-    `instr_params` are the instrument parameters of the run (no scan ranges); those the components
-    up to `sample_pos` do not use (the goniometer angles) are 0 unless given.
+    `instr_params` are the instrument parameters of the run (no scan ranges), in place of the
+    diffractometer's.
 
     The beam file only fits instruments with the same source and beam geometry, and the same
-    wavelength, so make a new one if you change the config's source (e.g. its wavelength), slit or monitor
+    wavelength, so make a new one if you change the config's ei, source, slit or monitor
     settings.
     """
     output_path = Path(output_path)
     shutil.rmtree(output_path, ignore_errors=True)
     output_path.parent.mkdir(parents=True, exist_ok=True)  # mcrun does not create parent folders
-    inst = build_instrument(_instrument(config))
-    used = config.params_used(until="sample_pos")
-    unused = {p.name: 0 for p in config.instr_params if p.name not in used}
-    if _set_instr_params(inst, config, unused | instr_params):
-        raise ValueError("dump_beam does not scan: give numbers, not ranges")
+    inst = build_instrument(config)
+    _set_instr_params(inst, config, instr_params)
     inst.settings(
         output_path=str(output_path),
         ncount=ncount,
@@ -124,10 +111,10 @@ def run_from_beam(
     **instr_params,
 ):
     """Part 2 of a split run, can be done any time later (even in another session): simulate
-    `sample_pos` -> crystal -> detector for every omega, all starting from the same beam file made
+    `sample_pos` -> sample -> detector for every omega, all starting from the same beam file made
     by `dump_beam`, with the angles running in parallel (`n_jobs` single-process mcrun jobs at a
     time, default: all cores). `instr_params` are the other instrument parameters, the same for every
-    omega: chi, phi (deg, both needed); the wavelength must be the one of the beam file. Returns
+    omega: chi, phi (deg; the diffractometer's unless given); the wavelength must be the one of the beam file. Returns
     the path of `<output_path>/mccode.h5`, one file with an entry per omega (`entry1`, `entry2`,
     ... in the order of `omegas`).
 
@@ -136,15 +123,13 @@ def run_from_beam(
     its own random seed (`seed` + index), so the jobs do not repeat each other's random numbers.
     """
     beam_file = Path(beam_file).resolve()
-    if not beam_file.exists():
-        raise FileNotFoundError(f"{beam_file} not found, run dump_beam first.")
     output_path = Path(output_path)
     shutil.rmtree(output_path, ignore_errors=True)
     output_path.mkdir(parents=True)  # mcrun does not create missing parent folders
     omegas = list(omegas)
     seed = int(np.random.SeedSequence().generate_state(1)[0] % 10**9) if seed is None else seed
 
-    inst = build_instrument(_instrument(config))
+    inst = build_instrument(config)
     inst.run_from("sample_pos", filename=f'"{beam_file}"')
     inst.settings(
         output_path=str(output_path),
@@ -192,13 +177,11 @@ def run_from_beam(
 
 if __name__ == "__main__":
     # Edit the settings below and run this file (e.g. with VS Code's ▶ button).
-    from align_crystal.instrument import CtrlParam, SingleCrystalDiffractometer, la2ni7
+    from align_crystal.instrument import SingleCrystalDiffractometer, la2ni7
 
-    # the sample is the crystal, in the innermost goniometer arm; ei: incident energy, meV
-    crystal = la2ni7(mosaic=60, at=[0, 0, 0], relative="gonio_phi")
-    diffractometer = SingleCrystalDiffractometer(
-        [CtrlParam("crystal", crystal), CtrlParam("ei", 14, "meV")]
-    )
+    # the sample, in the innermost goniometer arm; ei: incident energy, meV
+    sample = la2ni7(mosaic=60, at=[0, 0, 0], relative="gonio_phi")
+    diffractometer = SingleCrystalDiffractometer(sample, ei=14)
     MODE = "from_beam"  # "full": one run | "dump": split part 1 | "from_beam": split part 2
 
     if MODE == "full":

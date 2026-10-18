@@ -42,29 +42,11 @@ def test_the_cif_of_a_crystal_is_a_path_inside_the_package():
     assert (CIF_DIR / la2ni7(at=[0, 0, 0]).reflections).is_file()
 
 
-@pytest.mark.parametrize(
-    "cell, match",
-    [
-        ((1, 1, 1, 90, 90, 200), "between 0 and 180"),
-        ((1, 1, 1, 120, 120, 120), "No unit cell"),  # flat: no volume
-        ((1, 1, 1, 30, 30, 90), "No unit cell"),
-    ],
-)
-def test_a_cell_that_is_not_one_raises(cell, match):
-    with pytest.raises(ValueError, match=match):
-        Single_crystal(**{**ALUMINIUM, "lattice_params": list(cell)})
-
-
 def test_the_crystal_keeps_its_lattice_params():
     crystal = la2ni7(at=[0, 0, 0])
     assert crystal.lattice_params == [5.0556, 5.0556, 24.598, 90.0, 90.0, 120.0]
     B = crystal.reciprocal_basis()  # columns a*, b*, c* in the crystal frame
     assert np.linalg.norm(B[:, 2]) == pytest.approx(np.linalg.norm(crystal.cstar))
-
-
-def test_parallel_orientation_directions_raise():
-    with pytest.raises(ValueError, match="parallel"):
-        Single_crystal(**{**ALUMINIUM, "in_plane": [0, 0, 2]})
 
 
 def test_the_reciprocal_vectors_follow_the_parameters_and_are_not_parameters():

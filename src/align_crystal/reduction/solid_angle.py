@@ -14,9 +14,7 @@ def pixel_normal(position, geometry="cylinder"):
     position = np.asarray(position, float)
     if geometry == "cylinder":
         return position * np.array([1.0, 0.0, 1.0])
-    if geometry == "sphere":
-        return position.copy()
-    raise ValueError(f"Detector geometry {geometry!r} is not recognised (cylinder or sphere).")
+    return position.copy()
 
 
 def _triangle(a, b, c):

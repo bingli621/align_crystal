@@ -1,7 +1,7 @@
 """Files of the instrument: an adapter around the entities (instrument/ imports nothing from here).
 
 dict_io.py   to_dict, from_dict: the diffractometer to and from its nested dict; over_default
-yaml_io.py   yaml_loader, write_yaml, load(file, ctrl_params): a YAML file laid over the default
+yaml_io.py   yaml_loader, write_yaml, load(file, sample, **params): a YAML file laid over the default
 params.yaml  the default diffractometer saved: a reference of how a parameters file looks
 """
 

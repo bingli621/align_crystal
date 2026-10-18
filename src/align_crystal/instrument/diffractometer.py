@@ -5,14 +5,12 @@ nested arms) + sample -> detector.
 defaults, set in `__init__`; lengths in m, angles in deg) around the `sample`. Its params (`ei` and
 the goniometer angles) are kept in one place, read with `params` and changed with `update_params`;
 the instrument parameters McStas gets (`instr_params`: the wavelength of `ei`, and the angles) are
-calculated from them when used. A value left None is calculated when used (the source's focus
-distance, from `focus_on`).
+calculated from them when used, and so are the components' positions in the lab frame
+(`positions`).
 
 It knows no dicts or files: io/ converts it to and from its nested dict and a YAML file. No McStas
 knowledge: mcstas/builder.py builds the McStas instrument from it.
 """
-
-import math
 
 from align_crystal.instrument.components import (
     Arm,
@@ -23,8 +21,12 @@ from align_crystal.instrument.components import (
     Single_crystal,
     Slit,
     Source_simple,
+    short,
 )
-from align_crystal.instrument.params import InstrParam, with_values
+from align_crystal.instrument.geometry import place
+from align_crystal.instrument.params import InstrParam
+
+PARAM_UNITS = {"ei": "meV", "omega": "deg", "chi": "deg", "phi": "deg"}
 
 
 class SingleCrystalDiffractometer:
@@ -66,7 +68,6 @@ class SingleCrystalDiffractometer:
         self.source = Source_simple(
             radius=0.03,
             focus_on="sample_pos",  # the component the source focuses on
-            dist=None,  # source -> focus plane: derived from focus_on
             flux=1.0e10,
             at=[0, 0, 0],
             relative="origin",
@@ -74,9 +75,9 @@ class SingleCrystalDiffractometer:
         # opening = source focus
         self.slit = Slit(xwidth=0.01, yheight=0.01, at=[0, 0, 1.0], relative="source")
         # integrated incident intensity, 10 cm before the sample; the neutrons carry on
-        self.incident_monitor = Monitor(at=[0, 0, 1.9], relative="source")
+        self.incident_monitor = Monitor(at=[0, 0, 0.9], relative="slit")
         # the beam hits the goniometer centre; it can be dumped here
-        self.sample_pos = Arm(at=[0, 0, 2.0], relative="source")
+        self.sample_pos = Arm(at=[0, 0, 0.1], relative="incident_monitor")
         # goniometer arms, outermost first; each is rotated by an instrument parameter
         self.gonio_omega = Arm(at=[0, 0, 0], rotated=[0, "omega", 0], relative="sample_pos")  # +Y
         self.gonio_chi = Arm(at=[0, 0, 0], rotated=[0, 0, "-chi"], relative="gonio_omega")  # -Z
@@ -108,17 +109,17 @@ class SingleCrystalDiffractometer:
         self._params.update(values)
 
     @property
-    def wavelength(self) -> float:
-        """The wavelength of `ei`, angstrom: sqrt(81.80421 / ei[meV])."""
-        return math.sqrt(81.80421 / self._params["ei"])
-
-    @property
     def instr_params(self) -> list[InstrParam]:
         """The instrument parameters (McStas instrument parameters), from the params: the
         wavelength of `ei`, and the goniometer angles."""
         p = self._params
         return [
-            InstrParam("wavelength", self.wavelength, "angstrom", "neutron wavelength"),
+            InstrParam(
+                "wavelength",
+                Source_simple.wavelength_from_ei(p["ei"]),
+                "angstrom",
+                "neutron wavelength",
+            ),
             InstrParam("omega", p["omega"], "deg", "goniometer rotation about +Y"),
             InstrParam("chi", p["chi"], "deg", "goniometer rotation about -Z"),
             InstrParam("phi", p["phi"], "deg", "goniometer rotation about +X"),
@@ -130,27 +131,35 @@ class SingleCrystalDiffractometer:
         names = [n for n in SingleCrystalDiffractometer.__annotations__ if n != "name"]
         return {n: getattr(self, n) for n in names if getattr(self, n) is not None}
 
-    @property
-    def source_dist(self) -> float:
-        """The source -> focus plane distance, m: the source's `dist`, or, if that is None, the z
-        of the component it focuses on (`focus_on`, placed relative to the source)."""
-        if self.source.dist is not None:
-            return self.source.dist
-        return self.components[self.source.focus_on].at[2]
-
-    def instrument_param(self, **values) -> list[InstrParam]:
-        """The instrument parameters of a run: `instr_params`, with `values` (McStas name -> value)
-        in place of the diffractometer's."""
-        return with_values(self.instr_params, **values)
+    def positions(self, **values) -> dict[str, list[float]]:
+        """The position of each component (by name) in the lab frame, m, from its `at`, `rotated`
+        and `relative`: with the angles of `instr_params`, or `values` (McStas name -> value) in
+        place of them."""
+        values = {p.name: p.value for p in self.instr_params} | values
+        return {n: pos.tolist() for n, (pos, _) in place(self.components, values).items()}
 
     def __repr__(self):
-        """Its params, one per line: "name = value"."""
-        return "\n".join(
-            [
-                "Single crystal diffractometer with parameters:",
-                *(f"{k} = {v}" for k, v in self._params.items()),
-            ]
-        )
+        """A summary to read: the params, the instrument parameters, and the components in the
+        order of the beam (where each sits, and its position in the lab frame; a component's own
+        repr shows its values)."""
+        lines = [f"Single crystal diffractometer {self.name!r}", "", "Params:"]
+        lines += [f"  {k:<6} {short(v):>8} {PARAM_UNITS[k]}" for k, v in self._params.items()]
+        lines += ["", "Instrument parameters (McStas):"]
+        lines += [
+            f"  {p.name:<10} {short(p.value):>8} {p.unit:<8} {p.comment}" for p in self.instr_params
+        ]
+        lines += ["", "Components, in the order of the beam (m, deg):"]
+        positions = self.positions()
+        rows = [("name", "component", "at", "rotated", "relative", "position")]
+        for name, c in self.components.items():
+            rows.append(
+                (name, type(c).__name__, short(c.at), short(c.rotated), c.relative or "-",
+                 short(positions[name]))
+            )  # fmt: skip
+        widths = [max(len(row[i]) for row in rows) for i in range(len(rows[0]))]
+        for row in rows:
+            lines.append("  " + "  ".join(f"{x:<{w}}" for x, w in zip(row, widths)).rstrip())
+        return "\n".join(lines)
 
     def __eq__(self, other):  # also makes it unhashable: its components can be changed
         return type(other) is type(self) and (self.name, self._params, self.components) == (
@@ -161,11 +170,11 @@ class SingleCrystalDiffractometer:
 
 
 if __name__ == "__main__":
-    from align_crystal.instrument.components.sample import la2ni7
+    from align_crystal.instrument.samples import la2ni7
 
     sample = la2ni7(at=[0, 0, 0], relative="gonio_phi")
 
     diffractometer = SingleCrystalDiffractometer(sample)
     print(diffractometer)
-    # print(diffractometer.instr_params)
-    # print(diffractometer.components)
+    print(diffractometer.source)
+    print(sample)

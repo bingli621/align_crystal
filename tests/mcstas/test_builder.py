@@ -28,6 +28,19 @@ def test_the_parameters_and_the_goniometer_rotations(tmp_path, diffractometer):
     assert chi.ROTATED_data == [0, 0, "-chi"] and chi.ROTATED_reference == "gonio_omega"
 
 
+def test_the_source_focuses_at_the_distance_of_its_focus_on(tmp_path, diffractometer):
+    d = diffractometer()
+    source = next(
+        c for c in build_instrument(d, input_path=tmp_path).component_list if c.name == "source"
+    )
+    assert source.dist == pytest.approx(2.0)  # source -> sample_pos
+    d.sample_pos.at = [0, 0, 0.6]  # a change is followed: 0.6 m after the monitor, at 1.9 m
+    source = next(
+        c for c in build_instrument(d, input_path=tmp_path).component_list if c.name == "source"
+    )
+    assert source.dist == pytest.approx(2.5)
+
+
 def test_the_sample_of_the_diffractometer_sets_the_mcstas_crystal(tmp_path):
     sample = la2ni7(mosaic=60, at=[0, 0, 0], relative="gonio_phi")
     cfg = SingleCrystalDiffractometer(sample, ei=14)

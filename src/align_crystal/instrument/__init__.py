@@ -2,13 +2,15 @@
 mcstas/ are adapters around them and the only ones importing from here).
 
 Generic, for any instrument:
-components/        the components, one dataclass each (misc.py, source.py, detector.py, sample.py)
+components/        the components, one dataclass each (misc.py, source.py, detector.py, crystal.py)
+samples/           the ready-made samples (aluminum, la2ni7), with their CIF files
 params.py          InstrParam: one instrument parameter (a McStas instrument parameter)
-cif/               a plain folder: the CIF files of the ready-made crystals (aluminum, la2ni7)
+geometry.py        rotation, place: where the components are in the lab frame, as McStas places them
 
-model/             this instrument, the single-crystal diffractometer:
-  diffractometer.py  SingleCrystalDiffractometer(sample, ei, omega, chi, phi): makes its own
-                     components, each knowing where it sits; params, update_params, instr_params
+This instrument:
+diffractometer.py  SingleCrystalDiffractometer(sample, ei, omega, chi, phi), the single-crystal
+                   diffractometer: makes its own components, each knowing where it sits; params,
+                   update_params, instr_params, positions
 """
 
 from .components import (
@@ -21,9 +23,9 @@ from .components import (
     Slit,
     Source_simple,
 )
-from .components.sample import aluminum, la2ni7
-from .model.diffractometer import SingleCrystalDiffractometer
-from .params import InstrParam, with_values
+from .diffractometer import SingleCrystalDiffractometer
+from .params import InstrParam
+from .samples import aluminum, la2ni7
 
 __all__ = [
     "Arm",
@@ -38,5 +40,4 @@ __all__ = [
     "Source_simple",
     "aluminum",
     "la2ni7",
-    "with_values",
 ]

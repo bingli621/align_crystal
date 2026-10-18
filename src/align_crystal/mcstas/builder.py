@@ -10,6 +10,7 @@ The sample is mounted on the innermost (phi) axis, so
 R_sample = R_x(phi) applied first, then R_-z(chi), then R_y(omega).
 """
 
+import math
 from pathlib import Path
 
 from mcstasscript.interface import instr
@@ -21,7 +22,7 @@ from align_crystal.instrument.components import (
     Slit,
     Source_simple,
 )
-from align_crystal.instrument.components.sample import CIF_DIR
+from align_crystal.instrument.samples import CIF_DIR
 
 # McStas-generated files (.instr, .c, compiled binary) and simulation output go here, not in
 # the project root. Created on use.
@@ -31,7 +32,7 @@ OUTPUT_DIR = Path(__file__).resolve().parents[3] / "mcstas_output"
 def _add_instrument_parameters(inst, cfg):
     """One McStas instrument parameter per instrument parameter of `cfg`, with its value (a run
     sets its own with `set_parameters`)."""
-    for p in cfg.instrument_param():
+    for p in cfg.instr_params:
         inst.add_parameter(p.name, value=p.value, unit=p.unit, comment=p.comment)
 
 
@@ -47,8 +48,9 @@ def _place(inst, name, c):
 
 
 def _configure_source(comp, c, cfg):
+    positions = cfg.positions()
     comp.radius = c.radius
-    comp.dist = cfg.source_dist
+    comp.dist = math.dist(positions["source"], positions[c.focus_on])  # to the focus plane
     comp.focus_xw = cfg.slit.xwidth  # the source focuses on the slit opening
     comp.focus_yh = cfg.slit.yheight
     comp.lambda0 = c.lambda0  # a number, or the name of the instrument parameter
@@ -72,7 +74,9 @@ def _configure_crystal(comp, c, cfg):
     comp.xwidth, comp.yheight, comp.zdepth = c.xwidth, c.yheight, c.zdepth
     comp.mosaic = c.mosaic
     comp.order = c.order
-    cif = CIF_DIR / c.reflections  # a CIF file of instrument/cif/, else as given (a McStas list)
+    cif = (
+        CIF_DIR / c.reflections
+    )  # a CIF file of instrument/samples/, else as given (a McStas list)
     comp.reflections = f'"{cif if cif.is_file() else c.reflections}"'
     comp.recip_cell = 1
     comp.ax, comp.ay, comp.az = c.astar

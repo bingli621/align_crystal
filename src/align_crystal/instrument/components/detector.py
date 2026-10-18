@@ -5,12 +5,12 @@ from dataclasses import dataclass
 from .misc import Component
 
 
-@dataclass(kw_only=True)
+@dataclass(kw_only=True, repr=False)  # repr: Component's
 class Monitor(Component):
     pass
 
 
-@dataclass(kw_only=True)
+@dataclass(kw_only=True, repr=False)  # repr: Component's
 class Monitor_nD(Component):
     radius: float  # m
     yheight: float  # m

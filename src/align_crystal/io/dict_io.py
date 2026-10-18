@@ -2,9 +2,9 @@
 
 The dict: `name`; `params`, the diffractometer's params (ei, omega, chi, phi); and one section per
 component name, in the order of the beam, with its `component` (the McStas component name, e.g.
-"Slit"), its parameters, and last where it sits: `at`, `rotated` and `relative`. A value left null
-is computed when used (the source's `dist`) and not saved. A component value that an instrument parameter gives is the parameter's name, as in McStas
-(`rotated: [0, omega, 0]`).
+"Slit"), its parameters, where it sits: `at`, `rotated` and `relative`, and last its `position` in
+the lab frame (written, never read back). A component value that an instrument parameter gives is
+the parameter's name, as in McStas (`rotated: [0, omega, 0]`).
 
 `over_default(data)` lays a dict that holds only what differs over the default diffractometer: a
 value it gives wins, one it leaves out or sets to null stays as made.
@@ -18,6 +18,7 @@ from ..instrument.components import COMPONENTS
 
 # the fields of a component that say where it sits: last in its section, in this order
 PLACEMENT = ("at", "rotated", "relative")
+POSITION = "position"  # where it is in the lab frame: written last, for reading; never read back
 SECTIONS = ("name", "params")  # the keys of the dict that are not components
 
 
@@ -35,7 +36,9 @@ def merge(base: dict, over: dict) -> dict:
 
 def to_dict(d: SingleCrystalDiffractometer) -> dict:
     """The nested dict of `d`, the one `from_dict` takes. Each section has its `component`, its
-    parameters (unset optional ones left out), and last `at`, `rotated`, `relative`."""
+    parameters (unset optional ones left out), `at`, `rotated`, `relative`, and last its `position`
+    in the lab frame (m; with the diffractometer's angles), which `from_dict` ignores."""
+    positions = d.positions()
     sections = {}
     for name, c in d.components.items():
         values = asdict(c)
@@ -44,6 +47,7 @@ def to_dict(d: SingleCrystalDiffractometer) -> dict:
             "component": type(c).__name__,
             **{k: v for k, v in values.items() if v is not None},
             **placement,
+            POSITION: [round(x, 9) + 0.0 for x in positions[name]],  # + 0.0: no -0.0
         }
     return {"name": d.name, "params": dict(d.params), **sections}
 
@@ -74,6 +78,6 @@ def components(data: dict, classes: dict = COMPONENTS) -> dict:
     for name, section in data.items():
         if name in SECTIONS:
             continue
-        values = {k: v for k, v in section.items() if k != "component"}
+        values = {k: v for k, v in section.items() if k not in ("component", POSITION)}
         made[name] = classes[section["component"]](**values)
     return made

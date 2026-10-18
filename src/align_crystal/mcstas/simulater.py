@@ -16,7 +16,7 @@ def _set_instr_params(inst, config, instr_params):
     """Set the instrument parameters of a run on `inst`: those of `config`, with `instr_params`
     (McStas name -> value) in place of the diffractometer's. A "min,max" string is an mcrun scan
     range: it is returned, not set, since McStasScript's parameters only take numbers."""
-    values = {p.name: p.value for p in config.instrument_param(**instr_params)}
+    values = {p.name: p.value for p in config.instr_params} | instr_params
     scans = {k: v for k, v in values.items() if isinstance(v, str)}
     inst.set_parameters(**{k: v for k, v in values.items() if k not in scans})
     return scans

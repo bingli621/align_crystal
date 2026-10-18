@@ -35,7 +35,7 @@ def test_a_file_is_laid_over_the_code(tmp_path):
     d = load(tmp_path / "over.yaml")
     assert (d.slit.xwidth, d.slit.yheight) == (0.02, 0.01)  # given wins; null: as built
     assert (d.detector.n_theta, d.detector.n_y) == (600, 50)  # missing: as built
-    assert d.source_dist == 2.0
+    assert d.positions()["sample_pos"] == [0, 0, 2.0]  # as built
 
 
 def test_the_diffractometer_roundtrips_through_a_yaml_file(diffractometer, tmp_path):

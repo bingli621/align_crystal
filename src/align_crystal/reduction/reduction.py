@@ -7,6 +7,8 @@ import numpy as np
 import scipp as sc
 from scippneutron.conversion.graph import beamline, tof
 
+from align_crystal.instrument.geometry import rotation
+
 # scippneutron graph: positions -> two_theta (angle between ki and kf) -> momentum transfer
 Q_GRAPH = {
     **beamline.beamline(scatter=True),
@@ -41,24 +43,14 @@ def to_Q(events, wavelength):
     return events.transform_coords(["two_theta", "Qx", "Qy", "Qz"], graph=Q_GRAPH, keep_inputs=True)
 
 
-def _rot(axis, angle_deg):
-    """Right-handed (active) rotation matrix about +x, +y or +z."""
-    a = np.radians(angle_deg)
-    c, s = np.cos(a), np.sin(a)
-    return {
-        "x": np.array([[1, 0, 0], [0, c, -s], [0, s, c]]),
-        "y": np.array([[c, 0, s], [0, 1, 0], [-s, 0, c]]),
-        "z": np.array([[c, -s, 0], [s, c, 0], [0, 0, 1]]),
-    }[axis]
-
-
 def goniometer_matrix(omega, chi, phi):
     """Sample orientation in the lab frame (deg): R = R_y(omega) R_-z(chi) R_x(phi).
 
-    Matches the nested McStas arms of the instrument (omega about Y outermost, then -Z, then X);
-    McStas stores the inverse of this (lab -> sample) as the crystal's `Rotation`.
+    Made of the McStas rotations of the nested arms of the instrument (omega about Y outermost,
+    then -Z, then X), which go lab -> sample (`instrument.geometry.rotation`): R is their inverse.
     """
-    return _rot("y", omega) @ _rot("z", -chi) @ _rot("x", phi)
+    lab_to_sample = rotation(phi, 0, 0) @ rotation(0, 0, -chi) @ rotation(0, omega, 0)
+    return lab_to_sample.T
 
 
 def to_sample_frame(events, params):

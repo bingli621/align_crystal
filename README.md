@@ -12,13 +12,14 @@ src/align_crystal/   the library (installed)
   instrument/       the entities: the diffractometer is a set of components (no files, no McStas)
     components/       the components, one dataclass each, named after the McStas component
                       (misc.py: Component, Progress_bar, Slit, Arm; source.py: Source_simple;
-                       detector.py: Monitor, Monitor_nD; sample.py: Single_crystal, aluminum, la2ni7)
-    params.py         InstrParam: one instrument parameter; with_values
-    cif/              a plain folder: La2Ni7.cif (ready-made crystals: aluminum(), la2ni7() in components/sample.py)
-    model/            this instrument, the single-crystal diffractometer
-      diffractometer.py SingleCrystalDiffractometer(sample, ei, omega, chi, phi): makes its own
-                        components around the sample, each recording where it sits;
-                        the source focus distance follows from the component it focuses on
+                       detector.py: Monitor, Monitor_nD; crystal.py: Single_crystal)
+    samples/          the ready-made samples aluminum, la2ni7 (in __init__.py, which says how to add
+                      one), with their CIF files (La2Ni7.cif)
+    params.py         InstrParam: one instrument parameter
+    geometry.py       rotation, place: the components' positions in the lab frame, as McStas places them
+    diffractometer.py this instrument, SingleCrystalDiffractometer(sample, ei, omega, chi, phi):
+                      makes its own components around the sample, each recording where it sits;
+                      positions() gives where they are in the lab frame
   io/           files of the instrument (an adapter around the entities)
     dict_io.py        to_dict, from_dict: the diffractometer to and from its nested dict; over_default
     yaml_io.py        the only module that knows YAML: yaml_loader, write_yaml, load(file, sample, **params)
@@ -40,35 +41,39 @@ the sample is the diffractometer's `sample` (a `Single_crystal`, optional); `red
 
 ## Configuration
 
-The diffractometer makes itself in code, `SingleCrystalDiffractometer()` (`instrument/model/diffractometer.py`): the
+The diffractometer makes itself in code, `SingleCrystalDiffractometer()` (`instrument/diffractometer.py`): the
 components in the order of the beam, with their values. Its components are plain attributes
-(`d.slit.xwidth = 0.02`); what follows from them (the source's focus distance, the sample's
-reciprocal vectors) is computed when used.
+(`d.slit.xwidth = 0.02`); what follows from them (their positions in the lab frame, the sample's
+reciprocal vectors) is computed when used. `print(d)` shows a summary (the params, the instrument
+parameters, and a table of the components: where each sits and its position); `print(d.source)` shows
+one component's values.
 
 A parameters file is laid over the default one with `load(file, sample, **params)`
 (`io/yaml_io.py`), so it need hold only what differs: a value it gives wins, one it
 leaves out, or sets to `null`, stays as made. Its layout is that of
 `src/align_crystal/io/params.yaml`, the default diffractometer saved (a test keeps them equal): `params` (see below) and one
 section per component name: its `component` (the McStas component),
-its parameters, and last where it sits (`at`, `rotated`, `relative`). Save your own with
+its parameters, where it sits (`at`, `rotated`, `relative`), and last its `position` in the lab
+frame (m; calculated with the diffractometer's angles, written for reading and never read back:
+`d.positions()` gives them, `d.positions(omega=30)` at other angles). Save your own with
 `write_yaml(to_dict(d), "copy.yaml")`, edit it, and load it with `load("copy.yaml")`.
 
-The parameters are one nested dict (`io/dict_io.py`). A value left `null` is computed when used, not
-saved: the source's focus distance `dist` is the position of the component it focuses on (`focus_on`).
-Components never see the file.
+The parameters are one nested dict (`io/dict_io.py`). The source aims at the component it focuses on
+(`focus_on`): the McStas builder sets its focus distance to that one's. Components never see the
+file.
 
 The sample (a `Single_crystal`, or None) and the params, the incident energy `ei` (meV) and the
 goniometer angles `omega`, `chi`, `phi` (deg), are given when the instrument is made,
 `SingleCrystalDiffractometer(sample, ei=14, omega=0)`; by default 14 meV and all angles 0. The params
-are kept in one place: `d.params` reads them (read-only), `d.update_params(ei=25)` changes them, and
+are kept in one place: `d.params` gives a copy of them, `d.update_params(ei=25)` changes them, and
 the file holds them in its `params` section.
 
 The instrument parameters (`d.instr_params`, a list of `InstrParam`) are what McStas gets, calculated
-from the params when used (never saved): the wavelength of `ei` (`d.wavelength`; the source's
+from the params when used (never saved): the wavelength of `ei` (`Source_simple.wavelength_from_ei`; the source's
 `lambda0` names it), and the goniometer angles. Where a component takes a number it names an
 instrument parameter instead (or an expression of them), as in McStas: the goniometer arms have
-`rotated: [0, omega, 0]` etc. `d.instrument_param(omega=30)` gives them all, with the values a run
-gives in place of the diffractometer's.
+`rotated: [0, omega, 0]` etc. A run may give its own values in place of the diffractometer's
+(`run(config=d, omega=30)`).
 
 Every McStas run records its wavelength and angles, and the
 reduction reads them from the scan (`find_peaks(folder)`); give `find_peaks(folder, wavelength(14))`
@@ -118,7 +123,7 @@ A diffractometer can be created in these ways:
 from align_crystal.instrument import SingleCrystalDiffractometer, la2ni7
 from align_crystal.io import from_dict, load, to_dict, write_yaml, yaml_loader
 
-# the default one, made in code (instrument/model/diffractometer.py)
+# the default one, made in code (instrument/diffractometer.py)
 d = SingleCrystalDiffractometer()
 d = SingleCrystalDiffractometer(la2ni7(at=[0, 0, 0], relative="gonio_phi"), ei=14)
 # with a file laid over it (read with a loader: YAML by default)

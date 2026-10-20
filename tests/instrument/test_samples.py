@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from align_crystal.instrument import Single_crystal, aluminum, la2ni7
-from align_crystal.instrument.samples import CIF_DIR
+from align_crystal.instrument.components.crystal import CIF_DIR
 
 ALUMINIUM = {  # the parameters of aluminum()
     "xwidth": 0.005, "yheight": 0.005, "zdepth": 0.005, "order": 1, "mosaic": 5.0,

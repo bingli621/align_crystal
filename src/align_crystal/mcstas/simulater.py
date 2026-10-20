@@ -183,23 +183,23 @@ if __name__ == "__main__":
     # the sample, in the innermost goniometer arm; ei: incident energy, meV
     sample = la2ni7(mosaic=60, at=[0, 0, 0], relative="gonio_phi")
     diffractometer = SingleCrystalDiffractometer(sample, Params(ei=14))
-    MODE = "from_beam"  # "full": one run | "dump": split part 1 | "from_beam": split part 2
+    MODE = "dump"  # "full": one run | "dump": split part 1 | "from_beam": split part 2
 
     if MODE == "full":
         h5_file = run(
             config=diffractometer,
             ncount=1e6,
-            omega="-48,73",  # scan omega
+            omega="-48,83",  # scan omega
             chi=-5.893,
             phi=0.0,
-            custom_flags="-N 122",
+            custom_flags="-N 11",
         )
         print(f"Wrote {h5_file}")
     elif MODE == "dump":
         print(f"Wrote {dump_beam(ncount=1e8, config=diffractometer)}")
     elif MODE == "from_beam":
         h5_file = run_from_beam(
-            omegas=range(-48, 74),
+            omegas=range(-48, 83),
             config=diffractometer,
             chi=-5.893,
             phi=0.0,

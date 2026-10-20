@@ -5,10 +5,14 @@ instrument/samples/.
 """
 
 from dataclasses import dataclass
+from pathlib import Path
 
 import numpy as np
 
 from .base import Component
+
+# the CIF files of the ready-made samples: a crystal's `reflections` names one relative to it
+CIF_DIR = Path(__file__).resolve().parents[1] / "samples"
 
 
 @dataclass(kw_only=True, repr=False)  # repr: Component's
@@ -23,8 +27,6 @@ class Single_crystal(Component):
     parameters of their own.
     """
 
-    component_name = "Single_crystal"
-
     lattice_params: list  # a, b, c (angstrom), alpha, beta, gamma (deg)
     along_beam: list  # hkl along the beam
     in_plane: list  # hkl in the horizontal plane, towards +x
@@ -36,13 +38,10 @@ class Single_crystal(Component):
     mosaic: float = 5.0  # arc minutes (Gaussian RMS)
     recip_cell: int = 1  # 1: McStas takes astar, bstar, cstar (the only one it computes)
 
-    mcstas_uses = ("lattice_params", "along_beam", "in_plane", "reflections")
-
-    def mcstas_computed(self, inst):
-        """Its reciprocal vectors in the lab frame (so recip_cell must be 1); its reflections a CIF
-        file of instrument/samples/ (as a full path), else as given (a McStas list)."""
-        from ..samples import CIF_DIR  # samples/ imports this module
-
+    def mcstas_parameters(self, inst):
+        """Its fields, with its reciprocal vectors in the lab frame (so recip_cell must be 1); its
+        reflections a CIF file of instrument/samples/ (as a full path), else as given (a McStas
+        list)."""
         if self.recip_cell != 1:
             raise ValueError(f"{self.name}: recip_cell {self.recip_cell}: only 1 is computed")
         cif = CIF_DIR / self.reflections
@@ -51,7 +50,8 @@ class Single_crystal(Component):
             for axis, vector in zip("abc", self.reciprocal_axes())
             for x, value in zip("xyz", vector)
         }
-        return {"reflections": str(cif) if cif.is_file() else self.reflections, **vectors}
+        reflections = str(cif) if cif.is_file() else self.reflections
+        return super().mcstas_parameters(inst) | {"reflections": reflections, **vectors}
 
     @property
     def astar(self) -> list:

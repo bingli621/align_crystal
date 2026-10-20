@@ -1,14 +1,16 @@
 """Build the McStas instrument (McStasScript) of any `Instrument`.
 
 Its instrument parameters, then its components one by one, in the order of the beam (McStas
-positions are relative to earlier ones). Each is added as its `component_name`, named its `name`,
-at its `at`/`rotated`/`relative` (`add_to`), with its McStas parameters (`mcstas_values`: its
-fields, and what it computes), a McStas string quoted here. A parameter McStas does not know
-raises, so no field is dropped silently.
+positions are relative to earlier ones). Each is added as its `component_name`, named its
+`name`, at its `at`/`rotated`/`relative` (`add_to`), with its McStas parameters
+(`mcstas_parameters`: its fields, and what it computes), a McStas string quoted here. A field
+McStas does not know is left out (what it computes from); a computed parameter McStas does not
+know raises.
 
 Coordinate system: McStas, z along the beam, y up, x to the left of the beam.
 """
 
+from dataclasses import fields
 from pathlib import Path
 
 from mcstasscript.interface import instr
@@ -22,20 +24,28 @@ def build(instrument, input_path=OUTPUT_DIR):
     """Return a McStasScript instrument of `instrument`: its instrument parameters and its
     components."""
     Path(input_path).mkdir(parents=True, exist_ok=True)
-    inst = instr.McStas_instr(instrument.name, input_path=str(input_path))
+    mcstas_instr = instr.McStas_instr(instrument.name, input_path=str(input_path))
     # a run sets its own values with `set_parameters`
     for param in instrument.instr_params:
-        inst.add_parameter(param.name, value=param.value, unit=param.unit, comment=param.comment)
-    for c in instrument.components.values():
-        comp = c.add_to(inst)
-        values = c.mcstas_values(instrument)
-        if unknown := [p for p in values if p not in comp.parameter_names]:
-            raise ValueError(f"{c.name} ({c.component_name}): no McStas parameter {unknown}")
-        for parameter, value in values.items():
-            if comp.parameter_types[parameter] == "string":
+        mcstas_instr.add_parameter(
+            param.name, value=param.value, unit=param.unit, comment=param.comment
+        )
+    for component in instrument.components.values():
+        mcstas_comp = component.add_to(mcstas_instr)
+        known = set(mcstas_comp.parameter_names)  # by its McStas component
+        field_names = {f.name for f in fields(component)}
+        parameters = component.mcstas_parameters(instrument)
+        if unknown := sorted(parameters.keys() - known - field_names):  # computed, not McStas's
+            raise ValueError(
+                f"{component.name} ({component.component_name}): no McStas parameter {unknown}"
+            )
+        for name, value in parameters.items():
+            if name not in known:
+                continue  # a field it computes from
+            if mcstas_comp.parameter_types[name] == "string":
                 value = f'"{value}"'  # a McStas string is a quoted C string
-            setattr(comp, parameter, value)
-    return inst
+            setattr(mcstas_comp, name, value)
+    return mcstas_instr
 
 
 if __name__ == "__main__":

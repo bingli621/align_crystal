@@ -7,13 +7,11 @@ from .base import Component
 
 @dataclass(kw_only=True, repr=False)  # repr: Component's
 class Progress_bar(Component):
-    component_name = "Progress_bar"
+    pass
 
 
 @dataclass(kw_only=True, repr=False)  # repr: Component's
 class Slit(Component):
-    component_name = "Slit"
-
     xwidth: float  # opening, m
     yheight: float  # opening, m
 
@@ -21,5 +19,3 @@ class Slit(Component):
 @dataclass(kw_only=True, repr=False)  # repr: Component's
 class Arm(Component):
     """A reference frame (a goniometer axis, when its `rotated` uses an instrument parameter)."""
-
-    component_name = "Arm"

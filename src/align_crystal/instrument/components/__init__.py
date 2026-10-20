@@ -1,10 +1,10 @@
 """The building blocks of an instrument: one dataclass per McStas component.
 
 They carry almost no defaults of their own (see instrument/diffractometer.py; Single_crystal has a
-few) and know nothing about files. Each gives its McStas parameters (`mcstas_values`: its fields,
-and what it computes), but imports no McStas code. A value that follows from a component's own values is a
-property computed when used (the crystal's reciprocal vectors); one that depends on other components
-is left to the diffractometer (the positions, `positions`).
+few) and know nothing about files. Each gives its McStas parameters (`mcstas_parameters`: its
+fields, and what it computes), but imports no McStas code. A value that follows from a
+component's own values is a property computed when used (the crystal's reciprocal vectors); one
+that depends on other components is left to the diffractometer (the positions, `positions`).
 
 base.py     the base `Component`
 misc.py     the simple ones: Progress_bar, Slit, Arm
@@ -22,7 +22,7 @@ from .source import Source_simple
 # every component class by its McStas component name: what a section's `component:` in a
 # parameters file refers to
 COMPONENTS = {
-    c.component_name: c
+    c.__name__: c
     for c in (
         Arm,
         Monitor,

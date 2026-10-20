@@ -3,7 +3,7 @@ with its CIF file (if any) in this folder.
 
 `params` are the crystal's other parameters, or ones to change, e.g.
 `la2ni7(mosaic=60, at=[0, 0, 0], relative="gonio_phi")`. `reflections` names a CIF file relative to
-`CIF_DIR` (this folder), so a saved parameters file is portable.
+this folder (`CIF_DIR` of components/crystal.py), so a saved parameters file is portable.
 
 To add a sample:
 1. Put its CIF file in this folder (e.g. `NaCl.cif`), or use a McStas built-in reflection list
@@ -19,13 +19,9 @@ To add a sample:
    (tests/instrument/test_samples.py).
 """
 
-from pathlib import Path
-
 from ..components import Single_crystal
 
-CIF_DIR = Path(__file__).parent  # the CIF files of the ready-made samples
-
-__all__ = ["CIF_DIR", "aluminum", "la2ni7"]
+__all__ = ["aluminum", "la2ni7"]
 
 
 def aluminum(**params) -> Single_crystal:

@@ -10,8 +10,6 @@ from .base import Component
 class Source_simple(Component):
     """A monochromatic source."""
 
-    component_name = "Source_simple"
-
     radius: float  # m
     focus_on: str  # name of the component the source focuses on (at its distance, in McStas)
     focus_xw: float  # m
@@ -22,14 +20,13 @@ class Source_simple(Component):
     )
     dlambda: float  # wavelength spread, angstrom: 0 = monochromatic
 
-    mcstas_uses = ("focus_on",)
-
-    def mcstas_computed(self, inst):
-        """Focused at the distance of the component it focuses on."""
+    def mcstas_parameters(self, inst):
+        """Its fields, with the distance of the component it focuses on."""
         positions = inst.positions()
         if self.focus_on not in positions:
             raise ValueError(f"{self.name}: focus_on {self.focus_on!r} is no component")
-        return {"dist": math.dist(positions[self.name], positions[self.focus_on])}
+        dist = math.dist(positions[self.name], positions[self.focus_on])
+        return super().mcstas_parameters(inst) | {"dist": dist}
 
     @staticmethod
     def wavelength_from_ei(ei: float) -> float:

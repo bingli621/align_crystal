@@ -167,7 +167,7 @@ def _components_to_dict(instrument: Instrument) -> dict:
         values = asdict(component)
         placement = {key: values.pop(key) for key in ("at", "rotated", "relative")}  # moved last
         sections[name] = {
-            "component": type(component).__name__,
+            "component": component.component_name,
             **{key: value for key, value in values.items() if value is not None},
             **placement,
             "position": positions[name],

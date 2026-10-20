@@ -42,6 +42,12 @@ class Instrument:
         super().__init_subclass__(**kwargs)
         INSTRUMENTS[cls.__name__] = cls
 
+    def __setattr__(self, attr, value):
+        """Set an attribute; a component set on it gets its name (the attribute's)."""
+        if isinstance(value, Component):
+            value.name = attr
+        super().__setattr__(attr, value)
+
     def __init__(self, params=None):
         """Its control parameters `params` (a `params_class`; None: its defaults); a subclass then
         sets its components, in the order of the beam."""
@@ -102,7 +108,7 @@ class Instrument:
                 c.relative or "-",
                 format_value(positions[name]),
             )
-            components.append((name, type(c).__name__, *where))
+            components.append((name, c.component_name, *where))
         return "\n".join(
             [
                 f"{type(self).__name__} {self.name!r}",

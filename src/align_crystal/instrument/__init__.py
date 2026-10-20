@@ -1,10 +1,12 @@
-"""The entities: an instrument is a set of components (no files, no McStas knowledge; io/ and
-mcstas/ are adapters around them and the only ones importing from here).
+"""The entities: an instrument is a set of components (no files, no McStas code, though each
+component gives its McStas parameters; io/ and mcstas/ are adapters around them and the only ones
+importing from here).
 
 Generic, for any instrument:
 base.py            Instrument, the base of any instrument (components, params, instr_params,
                    positions); INSTRUMENTS, every one by class name. io/ and mcstas/ work with any
-components/        the components, one dataclass each (misc.py, source.py, detector.py, crystal.py)
+components/        the components, one dataclass each (base.py: Component;
+                   misc.py, source.py, detector.py, crystal.py)
 samples/           the ready-made samples (aluminum, la2ni7), with their CIF files
 params.py          param: a control parameter with its unit and comment; InstrParam: one McStas
                    instrument parameter; (and the diffractometer's Params, DEFAULT_PARAMS)

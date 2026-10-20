@@ -11,7 +11,6 @@ from align_crystal.instrument import (
     Slit,
     la2ni7,
 )
-from align_crystal.mcstas import adapters
 from align_crystal.mcstas.builder import build
 
 
@@ -93,10 +92,7 @@ def test_another_instrument_is_built_from_its_components_alone(tmp_path):
 
 @dataclass(kw_only=True, repr=False)
 class _GappedSlit(Slit):
-    gap: float = 0.1  # no McStas parameter, and its adapter does not handle it
-
-
-_GappedSlit.__name__ = "Slit"  # still the McStas Slit
+    gap: float = 0.1  # no McStas parameter; still the McStas Slit (its component_name)
 
 
 def test_a_field_nothing_takes_raises(tmp_path):
@@ -106,16 +102,15 @@ def test_a_field_nothing_takes_raises(tmp_path):
         build(d, input_path=tmp_path)
 
 
-def test_an_adapter_value_mcstas_does_not_know_raises(tmp_path, monkeypatch):
-    monkeypatch.setitem(adapters.ADAPTERS, Monitor, (lambda *_: {"bogus": 1}, set()))
+def test_a_computed_value_mcstas_does_not_know_raises(tmp_path, monkeypatch):
+    monkeypatch.setattr(Monitor, "mcstas_computed", lambda *_: {"bogus": 1})
     with pytest.raises(ValueError, match=r"monitor \(Monitor\): no McStas parameter \['bogus'\]"):
         build(_SlitOnly(), input_path=tmp_path)
 
 
-def test_a_component_without_an_adapter_passes_its_fields_through():
+def test_a_component_that_computes_nothing_passes_its_fields_through():
     slit = Slit(xwidth=1, yheight=2, at=[0, 0, 0])
-    assert Slit not in adapters.ADAPTERS
-    assert adapters.mcstas_values(slit, "s", None) == {"xwidth": 1, "yheight": 2}
+    assert slit.mcstas_values(None) == {"xwidth": 1, "yheight": 2}
 
 
 def test_the_source_focuses_on_a_component_of_the_instrument(tmp_path, diffractometer):
@@ -125,8 +120,9 @@ def test_the_source_focuses_on_a_component_of_the_instrument(tmp_path, diffracto
         build(d, input_path=tmp_path)
 
 
-def test_an_adapter_that_sets_a_field_raises(monkeypatch):
-    monkeypatch.setitem(adapters.ADAPTERS, Slit, (lambda *_: {"xwidth": 9}, set()))
+def test_a_component_that_computes_its_own_field_raises(monkeypatch):
+    monkeypatch.setattr(Slit, "mcstas_computed", lambda *_: {"xwidth": 9})
     slit = Slit(xwidth=1, yheight=2, at=[0, 0, 0])
-    with pytest.raises(ValueError, match=r"s \(Slit\): its adapter sets its fields \['xwidth'\]"):
-        adapters.mcstas_values(slit, "s", None)
+    slit.name = "s"
+    with pytest.raises(ValueError, match=r"s \(Slit\): it computes its fields \['xwidth'\]"):
+        slit.mcstas_values(None)

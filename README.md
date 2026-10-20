@@ -11,8 +11,9 @@ tools to read the McStas NeXus output (McStasToX, scippneutron) and convert to m
 src/align_crystal/   the library (installed)
   instrument/       the entities: an instrument is a set of components (no files, no McStas)
     components/       the components, one dataclass each, named after the McStas component
-                      (misc.py: Component, Progress_bar, Slit, Arm; source.py: Source_simple;
-                       detector.py: Monitor, Monitor_nD; crystal.py: Single_crystal)
+                      (base.py: Component; misc.py: Progress_bar, Slit, Arm;
+                       source.py: Source_simple; detector.py: Monitor, Monitor_nD;
+                       crystal.py: Single_crystal)
     samples/          the ready-made samples aluminum, la2ni7 (in __init__.py, which says how to add
                       one), with their CIF files (La2Ni7.cif)
     base.py           Instrument: the base of any instrument (components, params, instr_params,
@@ -33,9 +34,7 @@ src/align_crystal/   the library (installed)
     params.yaml       the default diffractometer saved; it names the components in beam order
   mcstas/       everything that talks to McStas
     builder.py        builds the McStasScript instrument of any instrument: places each component,
-                      sets its McStas parameters from adapters.py
-    adapters.py       a component's McStas parameters: its fields named as them, then its class's
-                      adapter function (fixed settings, computed values and references)
+                      sets its McStas parameters (each component's mcstas_values)
     simulater.py      run, dump_beam, run_from_beam (also runnable as a script); `config` is the diffractometer
     h5_reader.py      read_scan: the NeXus output via mcstastox
   reduction/    to_Q, to_sample_frame, solid-angle normalization, find_peaks

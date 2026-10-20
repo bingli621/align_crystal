@@ -4,7 +4,7 @@ from dataclasses import FrozenInstanceError
 
 import pytest
 
-from align_crystal.instrument import Params, Source_simple, aluminum
+from align_crystal.instrument import Params, Slit, Source_simple, aluminum
 from align_crystal.instrument import SingleCrystalDiffractometer as Diffractometer
 from align_crystal.io import from_dict, to_dict
 
@@ -95,3 +95,18 @@ def test_the_positions_follow_the_relative_frames_and_the_angles():
     assert d.positions()["sample"] == pytest.approx([0.1, 0, 2.0])  # +z turned to +x
     d.update_params(chi=90)
     assert d.positions()["sample"] == pytest.approx([0.1, 0, 2.0])  # along the chi axis
+
+
+def test_every_component_class_is_named_after_its_mcstas_component():
+    from align_crystal.instrument.components import COMPONENTS
+
+    assert all(name == c.__name__ == c.component_name for name, c in COMPONENTS.items())
+
+
+def test_a_component_gets_its_name_from_the_instrument():
+    d = Diffractometer()
+    assert d.slit.name == "slit" and d.source.name == "source"  # on the instance
+    slit = Slit(xwidth=0.01, yheight=0.01, at=[0, 0, 1.0], relative="source")
+    assert slit.name is None  # not on an instrument yet
+    d.slit = slit
+    assert slit.name == "slit" and "name" not in to_dict(d)["slit"]  # not saved

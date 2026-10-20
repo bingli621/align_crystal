@@ -12,10 +12,13 @@ class Source_simple(Component):
 
     radius: float  # m
     focus_on: str  # name of the component the source focuses on (at its distance, in McStas)
+    focus_xw: float  # m
+    focus_yh: float  # m
     flux: float
     lambda0: float | str = (
         "wavelength"  # angstrom, or the name of the instrument parameter that gives it
     )
+    dlambda: float  # wavelength spread, angstrom: 0 = monochromatic
 
     @staticmethod
     def wavelength_from_ei(ei: float) -> float:

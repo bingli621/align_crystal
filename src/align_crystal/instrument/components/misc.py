@@ -42,8 +42,8 @@ class Progress_bar(Component):
 
 @dataclass(kw_only=True, repr=False)  # repr: Component's
 class Slit(Component):
-    xwidth: float  # opening (and source focus), m
-    yheight: float  # opening (and source focus), m
+    xwidth: float  # opening, m
+    yheight: float  # opening, m
 
 
 @dataclass(kw_only=True, repr=False)  # repr: Component's

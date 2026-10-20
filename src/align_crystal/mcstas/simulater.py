@@ -9,7 +9,7 @@ import h5py
 import numpy as np
 from mcstasscript.helper.managed_mcrun import ManagedMcrun
 
-from align_crystal.mcstas.builder import OUTPUT_DIR, build_instrument
+from align_crystal.mcstas.builder import OUTPUT_DIR, build
 
 
 def _set_instr_params(inst, config, instr_params):
@@ -47,7 +47,7 @@ def run(
     `custom_flags` is passed to mcrun; with "-N 3" an instrument parameter given as "min,max" (e.g.
     omega="3,5") is scanned over 3 points."""
     shutil.rmtree(output_path, ignore_errors=True)  # always start from a clean folder
-    inst = build_instrument(config)
+    inst = build(config)
     inst.settings(
         output_path=str(output_path),
         ncount=ncount,
@@ -81,7 +81,7 @@ def dump_beam(output_path=OUTPUT_DIR / "beam", ncount=1e8, mpi="auto", config=No
     output_path = Path(output_path)
     shutil.rmtree(output_path, ignore_errors=True)
     output_path.parent.mkdir(parents=True, exist_ok=True)  # mcrun does not create parent folders
-    inst = build_instrument(config)
+    inst = build(config)
     _set_instr_params(inst, config, instr_params)
     inst.settings(
         output_path=str(output_path),
@@ -130,7 +130,7 @@ def run_from_beam(
     omegas = list(omegas)
     seed = int(np.random.SeedSequence().generate_state(1)[0] % 10**9) if seed is None else seed
 
-    inst = build_instrument(config)
+    inst = build(config)
     inst.run_from("sample_pos", filename=f'"{beam_file}"')
     inst.settings(
         output_path=str(output_path),

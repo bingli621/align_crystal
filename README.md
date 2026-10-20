@@ -32,8 +32,10 @@ src/align_crystal/   the library (installed)
                       path); read_yaml, write_yaml
     params.yaml       the default diffractometer saved; it names the components in beam order
   mcstas/       everything that talks to McStas
-    builder.py        builds the McStasScript instrument from an instrument (the diffractometer's
-                      goniometer: omega Y, chi -Z, phi X)
+    builder.py        builds the McStasScript instrument of any instrument: places each component,
+                      sets its McStas parameters from adapters.py
+    adapters.py       a component's McStas parameters: its fields named as them, then its class's
+                      adapter function (fixed settings, computed values and references)
     simulater.py      run, dump_beam, run_from_beam (also runnable as a script); `config` is the diffractometer
     h5_reader.py      read_scan: the NeXus output via mcstastox
   reduction/    to_Q, to_sample_frame, solid-angle normalization, find_peaks
@@ -96,7 +98,7 @@ instrument: SingleCrystalDiffractometer
 source:
   radius: 0.02
 detector:
-  n_theta: 600
+  radius: 0.8
 slit:
   at: [0, 0, 1.2]
 ```

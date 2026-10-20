@@ -1,18 +1,19 @@
-"""Build the McStas instrument (McStasScript) of a `SingleCrystalDiffractometer`.
+"""Build the McStas instrument (McStasScript) of any `Instrument`.
 
-Its components are added one by one, in the order of the beam (McStas positions are relative to
-earlier ones), each as the McStas component of its class name, at its `at`/`rotated`/`relative`,
-with its McStas parameters set from its values.
+Its instrument parameters, then its components one by one, in the order of the beam (McStas
+positions are relative to earlier ones). Each is the McStas component of its class name, at its
+`at`/`rotated`/`relative`, with its McStas parameters from adapters.py (its fields, and what its
+class's adapter adds), a McStas string quoted here. A parameter McStas does not know raises, so no
+field is dropped silently.
 
 Coordinate system: McStas, z along the beam, y up, x to the left of the beam.
 """
 
-import math
 from pathlib import Path
 
 from mcstasscript.interface import instr
 
-from align_crystal.instrument.samples import CIF_DIR
+from align_crystal.mcstas.adapters import mcstas_values
 
 # McStas-generated files (.instr, .c, compiled binary) and simulation output go here, not in
 # the project root. Created on use.
@@ -30,71 +31,23 @@ def _add(inst, name, c):
     return comp
 
 
-def build_instrument(d, input_path=OUTPUT_DIR):
-    """Return a McStasScript instrument of the diffractometer `d`: its instrument parameters and
-    its components."""
+def build(instrument, input_path=OUTPUT_DIR):
+    """Return a McStasScript instrument of `instrument`: its instrument parameters and its
+    components."""
     Path(input_path).mkdir(parents=True, exist_ok=True)
-    inst = instr.McStas_instr(d.name, input_path=str(input_path))
+    inst = instr.McStas_instr(instrument.name, input_path=str(input_path))
     # a run sets its own values with `set_parameters`
-    for p in d.instr_params:
-        inst.add_parameter(p.name, value=p.value, unit=p.unit, comment=p.comment)
-    positions = d.positions()
-
-    _add(inst, "origin", d.origin)
-
-    source = _add(inst, "source", d.source)
-    source.radius = d.source.radius
-    # to the focus plane
-    source.dist = math.dist(positions["source"], positions[d.source.focus_on])
-    source.focus_xw = d.slit.xwidth  # the source focuses on the slit opening
-    source.focus_yh = d.slit.yheight
-    source.lambda0 = d.source.lambda0  # a number, or the name of the instrument parameter
-    source.dlambda = 0  # monochromatic
-    source.flux = d.source.flux
-
-    slit = _add(inst, "slit", d.slit)
-    slit.xwidth = d.slit.xwidth
-    slit.yheight = d.slit.yheight
-
-    # integrated incident intensity, twice the slit opening; the neutrons carry on
-    monitor = _add(inst, "incident_monitor", d.incident_monitor)
-    monitor.xwidth = 2 * d.slit.xwidth
-    monitor.yheight = 2 * d.slit.yheight
-    monitor.restore_neutron = 1
-
-    _add(inst, "sample_pos", d.sample_pos)
-    _add(inst, "gonio_omega", d.gonio_omega)
-    _add(inst, "gonio_chi", d.gonio_chi)
-    _add(inst, "gonio_phi", d.gonio_phi)
-
-    if d.sample is not None:
-        s = d.sample
-        crystal = _add(inst, "sample", s)
-        crystal.xwidth, crystal.yheight, crystal.zdepth = s.xwidth, s.yheight, s.zdepth
-        crystal.mosaic = s.mosaic
-        crystal.order = s.order
-        # a CIF file of instrument/samples/, else as given (a McStas list)
-        cif = CIF_DIR / s.reflections
-        crystal.reflections = f'"{cif if cif.is_file() else s.reflections}"'
-        crystal.recip_cell = 1
-        crystal.ax, crystal.ay, crystal.az = s.astar
-        crystal.bx, crystal.by, crystal.bz = s.bstar
-        crystal.cx, crystal.cy, crystal.cz = s.cstar
-
-    # an event list with pixel ids, so mcstastox can read it (banana th/y)
-    det = d.detector
-    detector = _add(inst, "detector", det)
-    lo, hi = det.two_theta_range
-    detector.radius = det.radius
-    detector.yheight = det.yheight
-    detector.options = (
-        f'"banana, theta limits=[{lo} {hi}] bins={det.n_theta}, '
-        f"y limits=[{-det.yheight / 2} {det.yheight / 2}] bins={det.n_y}, "
-        'list all, pixel id, t"'
-    )
-    detector.filename = '"detector"'
-    detector.nexus_bins = 1
-    detector.restore_neutron = 1
+    for param in instrument.instr_params:
+        inst.add_parameter(param.name, value=param.value, unit=param.unit, comment=param.comment)
+    for name, c in instrument.components.items():
+        comp = _add(inst, name, c)
+        values = mcstas_values(c, name, instrument)
+        if unknown := [p for p in values if p not in comp.parameter_names]:
+            raise ValueError(f"{name} ({type(c).__name__}): no McStas parameter {unknown}")
+        for parameter, value in values.items():
+            if comp.parameter_types[parameter] == "string":
+                value = f'"{value}"'  # a McStas string is a quoted C string
+            setattr(comp, parameter, value)
     return inst
 
 
@@ -103,7 +56,8 @@ if __name__ == "__main__":
 
     # the sample, in the innermost goniometer arm
     sample = la2ni7(at=[0, 0, 0], relative="gonio_phi")
-    inst = build_instrument(SingleCrystalDiffractometer(sample))
+    diffractometer = SingleCrystalDiffractometer(sample)
+    inst = build(diffractometer)
     inst.show_parameters()
     inst.show_components()
     inst.show_diagram()

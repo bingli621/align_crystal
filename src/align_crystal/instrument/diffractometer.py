@@ -52,15 +52,19 @@ class SingleCrystalDiffractometer(Instrument):
         self.origin = Progress_bar(at=[0, 0, 0])
         self.source = Source_simple(
             radius=0.03,
+            focus_xw=0.01,  # m
+            focus_yh=0.01,  # m
             focus_on="sample_pos",  # the component the source focuses on
             flux=1.0e10,
+            dlambda=0,  # monochromatic
             at=[0, 0, 0],
             relative="origin",
         )
-        # opening = source focus
-        self.slit = Slit(xwidth=0.01, yheight=0.01, at=[0, 0, 1.0], relative="source")
+        self.slit = Slit(xwidth=0.03, yheight=0.03, at=[0, 0, 1.0], relative="source")
         # integrated incident intensity, 10 cm before the sample; the neutrons carry on
-        self.incident_monitor = Monitor(at=[0, 0, 0.9], relative="slit")
+        self.incident_monitor = Monitor(
+            xwidth=0.02, yheight=0.02, restore_neutron=1, at=[0, 0, 0.9], relative="slit"
+        )
         # the beam hits the goniometer centre; it can be dumped here
         self.sample_pos = Arm(at=[0, 0, 0.1], relative="incident_monitor")
         # goniometer arms, outermost first; each is rotated by an instrument parameter
@@ -72,10 +76,15 @@ class SingleCrystalDiffractometer(Instrument):
         # cylindrical ("banana") detector around the vertical axis through the sample
         self.detector = Monitor_nD(
             radius=1.0,
-            yheight=0.5,
-            two_theta_range=[-125.0, -5.0],  # signed: negative = right of the beam
-            n_theta=1200,
-            n_y=50,
+            theta_limits=[-125.0, -5.0],  # signed: negative = right of the beam
+            theta_bins=1200,
+            ymin=-0.25,  # 0.5 m high, centred on the beam
+            ymax=0.25,
+            y_bins=50,
+            options="banana, list all, pixel id, t",  # an event list mcstastox can read
+            filename="detector",
+            nexus_bins=1,
+            restore_neutron=1,
             at=[0, 0, 0],
             relative="sample_pos",
         )

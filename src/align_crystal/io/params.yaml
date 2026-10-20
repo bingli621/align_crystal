@@ -36,7 +36,10 @@ source:                # monochromatic
   lambda0: wavelength  # angstrom: the instrument parameter, calculated from ei unless a run sets it
   radius: 0.03         # m
   focus_on: sample_pos # the component the source focuses on, at its distance
+  focus_xw: 0.01       # m
+  focus_yh: 0.01       # m
   flux: 1.0e+10        # PyYAML needs the sign: 1.0e10 would load as a string
+  dlambda: 0           # angstrom: monochromatic
   at: [0, 0, 0]
   rotated: [0, 0, 0]
   relative: origin
@@ -44,8 +47,8 @@ source:                # monochromatic
 
 slit:
   component: Slit
-  xwidth: 0.01         # opening and source focus, m
-  yheight: 0.01
+  xwidth: 0.03         # opening, m
+  yheight: 0.03        # m
   at: [0, 0, 1.0]
   rotated: [0, 0, 0]
   relative: source
@@ -53,6 +56,9 @@ slit:
 
 incident_monitor:      # integrated incident intensity; the neutrons carry on
   component: Monitor
+  xwidth: 0.02         # twice the slit opening, m
+  yheight: 0.02
+  restore_neutron: 1   # the neutrons carry on
   at: [0, 0, 0.9]      # 10 cm before the sample
   rotated: [0, 0, 0]
   relative: slit
@@ -99,6 +105,7 @@ sample:
   zdepth: 0.005
   order: 1             # single scattering only (no multiple scattering): much faster
   mosaic: 5.0         # arc minutes (Gaussian RMS)
+  recip_cell: 1        # McStas takes the reciprocal vectors
   at: [0, 0, 0]
   rotated: [0, 0, 0]
   relative: gonio_phi
@@ -107,10 +114,15 @@ sample:
 detector:              # cylindrical ("banana") detector around the vertical axis through the sample
   component: Monitor_nD
   radius: 1.0          # m
-  yheight: 0.5         # m
-  two_theta_range: [-125.0, -5.0]   # deg, signed: negative = right of the beam
-  n_theta: 1200
-  n_y: 50
+  theta_limits: [-125.0, -5.0]   # deg, signed: negative = right of the beam
+  theta_bins: 1200
+  ymin: -0.25          # m: 0.5 m high, centred on the beam
+  ymax: 0.25           # m
+  y_bins: 50
+  options: "banana, list all, pixel id, t"   # an event list mcstastox can read
+  filename: detector
+  nexus_bins: 1        # an event list with pixel ids, so mcstastox can read it
+  restore_neutron: 1   # the neutrons carry on
   at: [0, 0, 0]
   rotated: [0, 0, 0]
   relative: sample_pos

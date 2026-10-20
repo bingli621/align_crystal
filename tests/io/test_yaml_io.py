@@ -41,18 +41,18 @@ def test_a_file_is_laid_over_the_code(tmp_path):
         {
             "instrument": "SingleCrystalDiffractometer",
             "slit": {"xwidth": 0.02, "yheight": None},
-            "detector": {"n_theta": 600},
+            "detector": {"radius": 0.8},
         },
         tmp_path / "over.yaml",
     )
     d = load(tmp_path / "over.yaml")
-    assert (d.slit.xwidth, d.slit.yheight) == (0.02, 0.01)  # given wins; null: as built
-    assert (d.detector.n_theta, d.detector.n_y) == (600, 50)  # missing: as built
+    assert (d.slit.xwidth, d.slit.yheight) == (0.02, 0.03)  # given wins; null: as built
+    assert (d.detector.radius, d.detector.y_bins) == (0.8, 50)  # missing: as built
     assert d.positions()["sample_pos"] == [0, 0, 2.0]  # as built
 
 
 def test_the_diffractometer_roundtrips_through_a_yaml_file(diffractometer, tmp_path):
-    inst = diffractometer({"detector": {"n_theta": 600}})
+    inst = diffractometer({"detector": {"radius": 0.8}})
     write_yaml(to_dict(inst), tmp_path / "out.yaml")
     assert load(tmp_path / "out.yaml") == inst
     written = read_yaml(tmp_path / "out.yaml")

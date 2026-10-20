@@ -32,6 +32,7 @@ class Single_crystal(Component):
     zdepth: float = 0.005  # m
     order: int = 1  # 1 = single scattering only (no multiple scattering): much faster
     mosaic: float = 5.0  # arc minutes (Gaussian RMS)
+    recip_cell: int = 1  # 1: McStas takes astar, bstar, cstar (the only one the adapter gives)
 
     @property
     def astar(self) -> list:

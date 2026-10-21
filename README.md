@@ -20,13 +20,14 @@ src/align_crystal/   the library (installed)
                       positions); INSTRUMENTS, every one by class name. io/ and the McStas builder
                       work with any
     params.py         param: a control parameter with its unit and comment; InstrParam: one
-                      McStas instrument parameter; the diffractometer's Params, DEFAULT_PARAMS
+                      McStas instrument parameter (any instrument)
     geometry.py       rotation, place_absolute: the components' positions in the lab frame, as McStas places them
     utils.py          evaluate: a McStas expression of instrument parameters ("-chi"), safely;
                       format_value: a value short, for display
     diffractometer.py this instrument, SingleCrystalDiffractometer(sample, params), an Instrument:
                       makes its own components around the sample, each recording where it sits;
-                      instr_params: the wavelength of ei, and the goniometer angles
+                      its control parameters Params, DEFAULT_PARAMS; instr_params: the wavelength
+                      of ei, and the goniometer angles
   io/           files of the instrument (an adapter around the entities)
     dict_io.py        to_dict, from_dict: any instrument to and from its nested dict; from_overrides
     yaml_io.py        the only module that knows YAML: load(path, **kwargs), save(instrument,

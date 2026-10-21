@@ -9,7 +9,7 @@ components/        the components, one dataclass each (base.py: Component;
                    misc.py, source.py, detector.py, crystal.py)
 samples/           the ready-made samples (aluminum, la2ni7), with their CIF files
 params.py          param: a control parameter with its unit and comment; InstrParam: one McStas
-                   instrument parameter; (and the diffractometer's Params, DEFAULT_PARAMS)
+                   instrument parameter
 geometry.py        rotation, place_absolute: where the components are in the lab frame, as McStas
                    places them
 utils.py           evaluate: the number a McStas expression of instrument parameters stands for;
@@ -17,8 +17,8 @@ utils.py           evaluate: the number a McStas expression of instrument parame
 
 This instrument:
 diffractometer.py  SingleCrystalDiffractometer(sample, params), an Instrument: makes its own
-                   components around the sample; instr_params: the wavelength of ei, and the
-                   goniometer angles
+                   components around the sample; its control parameters Params, DEFAULT_PARAMS;
+                   instr_params: the wavelength of ei, and the goniometer angles
 """
 
 from .base import INSTRUMENTS, Instrument
@@ -32,8 +32,8 @@ from .components import (
     Slit,
     Source_simple,
 )
-from .diffractometer import SingleCrystalDiffractometer
-from .params import DEFAULT_PARAMS, InstrParam, Params
+from .diffractometer import DEFAULT_PARAMS, Params, SingleCrystalDiffractometer
+from .params import InstrParam
 from .samples import aluminum, la2ni7
 
 __all__ = [

@@ -3,14 +3,16 @@ nested arms) + sample -> detector.
 
 `SingleCrystalDiffractometer(sample, params)`, an `Instrument` (base.py: what every
 instrument shares), makes its own components (the defaults, set in `__init__`; lengths in m, angles
-in deg) around the `sample`. Its control parameters are `Params` (params.py: `ei` and the
-goniometer angles); the instrument parameters McStas gets (`instr_params`: the wavelength of `ei`,
+in deg) around the `sample`. Its control parameters are `Params` (here: `ei` and the goniometer
+angles); the instrument parameters McStas gets (`instr_params`: the wavelength of `ei`,
 and the angles) are calculated from them when used.
 
 It knows no dicts or files: io/ converts it to and from its nested dict and a YAML file (which
 names it `SingleCrystalDiffractometer`). No McStas knowledge: mcstas/builder.py builds the McStas
 instrument from it.
 """
+
+from dataclasses import dataclass
 
 from align_crystal.instrument.base import Instrument
 from align_crystal.instrument.components import (
@@ -22,7 +24,22 @@ from align_crystal.instrument.components import (
     Slit,
     Source_simple,
 )
-from align_crystal.instrument.params import DEFAULT_PARAMS, InstrParam, Params
+from align_crystal.instrument.params import InstrParam, param
+
+
+@dataclass(frozen=True)
+class Params:
+    """The control parameters of the diffractometer: what you set on it. Frozen: change them with
+    `SingleCrystalDiffractometer.update_params`. Each field's `unit` and `comment` are in its
+    metadata."""
+
+    ei: float = param(14.0, "meV", "incident energy")
+    omega: float = param(0.0, "deg", "goniometer rotation about +Y")
+    chi: float = param(0.0, "deg", "goniometer rotation about -Z")
+    phi: float = param(0.0, "deg", "goniometer rotation about +X")
+
+
+DEFAULT_PARAMS = Params()  # frozen, so one shared default is safe
 
 
 class SingleCrystalDiffractometer(Instrument):

@@ -6,7 +6,8 @@ import mcstastox
 import numpy as np
 import scipp as sc
 
-from ..mcstas.h5_reader import numeric_parameters
+from align_crystal.mcstas.h5_reader import numeric_parameters
+
 from .solid_angle import rectangle_solid_angle
 
 

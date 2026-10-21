@@ -12,7 +12,8 @@ and dicts on one line (`at: [0, 0, 1.0]`, `ei: {value: 14.0, unit: meV, comment:
 
 import yaml
 
-from ..core import Instrument
+from align_crystal.core import Instrument
+
 from .dict_io import from_overrides, to_dict
 
 

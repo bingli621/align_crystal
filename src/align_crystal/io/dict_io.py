@@ -40,9 +40,9 @@ merge(defaults, overrides)           how a dict is laid over another
 import copy
 from dataclasses import asdict, fields
 
-from .. import instruments  # noqa: F401  (adds every instrument to INSTRUMENTS)
-from ..core import INSTRUMENTS, Instrument
-from ..core.components import COMPONENTS
+from align_crystal import instruments  # noqa: F401  (adds every instrument to INSTRUMENTS)
+from align_crystal.core import INSTRUMENTS, Instrument
+from align_crystal.core.components import COMPONENTS
 
 
 def to_dict(instrument: Instrument) -> dict:

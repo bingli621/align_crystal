@@ -5,8 +5,10 @@ goniometer rotation, so the reciprocal lattice stays fixed while omega changes.
 
 In VS Code: run this file, or from a notebook/Interactive Window:
 
+    from align_crystal import PROJECT_ROOT
+    from align_crystal.mcstas.simulation import OUTPUT_DIR
     from plot_scan_Q import plot_scan_Q
-    plot_scan_Q("mcstas_output/latest", scan_par="omega", out="output/scan_Q.gif")
+    plot_scan_Q(OUTPUT_DIR / "latest", scan_par="omega", out=PROJECT_ROOT / "output" / "scan_Q.gif")
 """
 
 from pathlib import Path
@@ -16,16 +18,16 @@ import numpy as np
 from matplotlib.animation import FuncAnimation, PillowWriter
 from matplotlib.colors import LogNorm
 
+from align_crystal import PROJECT_ROOT
 from align_crystal.mcstas.h5_reader import read_scan
+from align_crystal.mcstas.simulation import OUTPUT_DIR
 from align_crystal.reduction import normalize_scan, run_wavelength, to_Q, to_sample_frame
-
-ROOT = Path(__file__).resolve().parents[1]
 
 
 def plot_scan_Q(
-    folder=ROOT / "mcstas_output" / "latest",
+    folder=OUTPUT_DIR / "latest",
     scan_par="omega",
-    out=ROOT / "output" / "scan_Q.gif",
+    out=PROJECT_ROOT / "output" / "scan_Q.gif",
     bins=(200, 200),
     fps=3,
     accumulate=True,
@@ -38,7 +40,7 @@ def plot_scan_Q(
 
     With `normalize`, the intensities are divided by the incident monitor and the pixel solid
     angle (see `normalize_scan`), in 1/sr. For data from `run_from_beam` give the beam run's
-    `monitor_file` (`mcstas_output/beam/mccode.h5`). `wavelength` (a scipp scalar, e.g.
+    `monitor_file` (`OUTPUT_DIR / "beam" / "mccode.h5"`). `wavelength` (a scipp scalar, e.g.
     `reduction.wavelength(14)`): None takes the one each scan point stores.
 
     With `accumulate`, frame i shows the sum of all scan points up to i (previous frames are kept).
@@ -105,7 +107,7 @@ def plot_scan_Q(
     anim = FuncAnimation(fig, draw, frames=len(points), blit=False)
     draw(0)
     if out is not None:
-        Path(out).parent.mkdir(exist_ok=True)
+        Path(out).parent.mkdir(parents=True, exist_ok=True)
         anim.save(out, writer=PillowWriter(fps=fps))
     if show:
         plt.show()
@@ -115,8 +117,8 @@ def plot_scan_Q(
 if __name__ == "__main__":
     # normalized (Qx, Qz) map of a run_from_beam scan, using the monitor of the beam run
     plot_scan_Q(
-        folder=ROOT / "mcstas_output" / "split",
-        out=ROOT / "output" / "scan_Q_normalized.gif",
+        folder=OUTPUT_DIR / "split",
+        out=PROJECT_ROOT / "output" / "scan_Q_normalized.gif",
         normalize=True,
-        monitor_file=ROOT / "mcstas_output" / "beam" / "mccode.h5",
+        monitor_file=OUTPUT_DIR / "beam" / "mccode.h5",
     )

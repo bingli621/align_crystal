@@ -17,8 +17,12 @@ import h5py
 import numpy as np
 from mcstasscript.helper.managed_mcrun import ManagedMcrun
 
-from align_crystal.mcstas.builder import OUTPUT_DIR, build
+from align_crystal import PROJECT_ROOT
+from align_crystal.mcstas.builder import build_mcstas
 from align_crystal.mcstas.h5_reader import read_scan
+
+# simulation output (a folder per run), McStasScript's output_path. Created by each run.
+OUTPUT_DIR = PROJECT_ROOT / "mcstas_output"
 
 
 def _clean_folder(path):
@@ -38,7 +42,7 @@ def _mcrun(inst, **options):
 def _run_scan(inst, scans):
     """Run `inst` with mcrun scan ranges, e.g. {"omega": "3,5"} together with custom_flags "-N 3".
     McStasScript's parameters only take numbers, so the ranges are given to mcrun directly."""
-    inst.write_full_instrument()  # compiles in OUTPUT_DIR
+    inst.write_full_instrument()  # compiles in its input_dir
     params = {p.name: p.value for p in inst.parameters if p.name not in scans}
     _mcrun(inst, parameters=params | scans, output_path=inst.output_path)
 
@@ -57,24 +61,25 @@ def _merge_entries(folders, merged):
 class Simulation:
     """Runs of `instrument` (e.g. a `SingleCrystalDiffractometer`), each into a folder of
     `output_dir`: `latest/` for `run`, `beam/` for `dump_beam`, `split/` for `run_from_beam`
-    (`name` gives another one). Every run builds the instrument anew, so a change to it applies
-    to the next run.
+    (`name` gives another one). Every run builds the instrument anew, into `input_dir` (None for
+    the builder's `INPUT_DIR`), so a change to it applies to the next run.
 
     `beam_file` is the beam file `run_from_beam` starts from: the one of the last `dump_beam`,
     else `output_dir/beam/beam.mcpl.gz`, so a beam dumped in an earlier session is found.
     `last_output` is the folder of the last run, which `read` reads.
     """
 
-    def __init__(self, instrument, output_dir=OUTPUT_DIR):
+    def __init__(self, instrument, output_dir=OUTPUT_DIR, input_dir=None):
         self.instrument = instrument
         self.output_dir = Path(output_dir)
+        self.input_dir = input_dir
         self.beam_file = self.output_dir / "beam" / "beam.mcpl.gz"
         self.last_output = None
 
     def _build(self, output_path, **settings):
         """Return the McStasScript instrument, with NeXus output into `output_path` and the
         other run `settings`."""
-        inst = build(self.instrument)
+        inst = build_mcstas(self.instrument, input_path=self.input_dir)
         inst.settings(
             output_path=str(output_path),
             NeXus=True,
@@ -119,7 +124,7 @@ class Simulation:
         if scans := self._set_instr_params(inst, instr_params):
             _run_scan(inst, scans)
         else:
-            inst.backengine()  # compiles in OUTPUT_DIR
+            inst.backengine()  # compiles in its input_dir
         return output_path / "mccode.h5"
 
     def dump_beam(self, name="beam", ncount=1e8, mpi="auto", **instr_params):

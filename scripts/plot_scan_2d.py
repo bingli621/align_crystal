@@ -2,8 +2,10 @@
 
 In VS Code: run this file, or from a notebook/Interactive Window:
 
+    from align_crystal import PROJECT_ROOT
+    from align_crystal.mcstas.simulation import OUTPUT_DIR
     from plot_scan_2d import plot_scan_2d
-    plot_scan_2d("mcstas_output/latest", scan_par="omega", out="output/scan.gif")
+    plot_scan_2d(OUTPUT_DIR / "latest", scan_par="omega", out=PROJECT_ROOT / "output" / "scan.gif")
 """
 
 from pathlib import Path
@@ -13,15 +15,15 @@ import numpy as np
 from matplotlib.animation import FuncAnimation, PillowWriter
 from matplotlib.colors import LogNorm
 
+from align_crystal import PROJECT_ROOT
 from align_crystal.mcstas.h5_reader import read_scan
-
-ROOT = Path(__file__).resolve().parents[1]
+from align_crystal.mcstas.simulation import OUTPUT_DIR
 
 
 def plot_scan_2d(
-    folder=ROOT / "mcstas_output" / "latest",
+    folder=OUTPUT_DIR / "latest",
     scan_par="omega",
-    out=ROOT / "output" / "scan.gif",
+    out=PROJECT_ROOT / "output" / "scan.gif",
     bins=(1200, 50),
     fps=3,
     show=True,
@@ -62,7 +64,7 @@ def plot_scan_2d(
     anim = FuncAnimation(fig, draw, frames=len(points), blit=False)
     draw(0)
     if out is not None:
-        Path(out).parent.mkdir(exist_ok=True)
+        Path(out).parent.mkdir(parents=True, exist_ok=True)
         anim.save(out, writer=PillowWriter(fps=fps))
     if show:
         plt.show()

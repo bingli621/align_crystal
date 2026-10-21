@@ -42,9 +42,10 @@ src/align_crystal/   the library (installed)
                       as a script)
     h5_reader.py      read_scan: the NeXus output via mcstastox
   reduction/    to_Q, to_sample_frame, solid-angle normalization, find_peaks
-scripts/        plot_scan_2d.py, plot_scan_Q.py (gifs), print_peaks.py
+scripts/        build_instrument.py, plot_scan_2d.py, plot_scan_Q.py (gifs), print_peaks.py
 tests/
-mcstas_output/  generated McStas files and simulation results (git-ignored)
+mcstas_input/   generated McStas files: .instr, .c, compiled binary (git-ignored)
+mcstas_output/  simulation results (git-ignored)
 ```
 
 Dependencies point inwards (clean architecture): `core` holds the entities any instrument
@@ -162,6 +163,7 @@ save(d, "copy.yaml")
 
 ```bash
 pixi run python src/align_crystal/mcstas/simulation.py  # edit MODE: one run, or beam dump + run from the beam
+pixi run python scripts/build_instrument.py             # mcstas_input/: the .instr file, its diagram
 pixi run python scripts/plot_scan_2d.py                 # output/scan.gif
 pixi run python scripts/plot_scan_Q.py                  # output/scan_Q.gif
 pixi run python scripts/print_peaks.py                  # peak list of mcstas_output/latest
@@ -169,7 +171,9 @@ pixi run pytest --cov=align_crystal --cov-report=term-missing   # tests + covera
 pixi run pre-commit install                             # once: ruff format on every commit
 ```
 
-Results go to `mcstas_output/` (`latest/`, and `beam/` + `split/` for the split run). A split run
+McStas builds in `mcstas_input/` and results go to `mcstas_output/` (`latest/`, and `beam/` +
+`split/` for the split run); `Simulation(d, output_dir=..., input_dir=...)` takes others, and the
+environment variable `ALIGN_CRYSTAL_ROOT` moves both. A split run
 simulates source to sample once (`Simulation.dump_beam`) and then the crystal for many angles in parallel
 (`run_from_beam`), which can be normalized with the beam run's incident monitor.
 

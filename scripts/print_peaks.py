@@ -3,9 +3,11 @@ save it to a text file.
 
 In VS Code: run this file, or from a notebook/Interactive Window:
 
+    from align_crystal import PROJECT_ROOT
+    from align_crystal.mcstas.simulation import OUTPUT_DIR
     from print_peaks import print_peaks, save_peaks
-    peaks = print_peaks("mcstas_output/latest")
-    save_peaks(peaks, "output/peaks.txt")
+    peaks = print_peaks(OUTPUT_DIR / "latest")
+    save_peaks(peaks, PROJECT_ROOT / "output" / "peaks.txt")
 """
 
 import sys
@@ -13,9 +15,9 @@ from pathlib import Path
 
 import numpy as np
 
+from align_crystal import PROJECT_ROOT
+from align_crystal.mcstas.simulation import OUTPUT_DIR
 from align_crystal.reduction import find_peaks
-
-ROOT = Path(__file__).resolve().parents[1]
 
 
 def format_peaks(peaks):
@@ -31,15 +33,15 @@ def format_peaks(peaks):
     return lines
 
 
-def save_peaks(peaks, out=ROOT / "output" / "peaks.txt"):
+def save_peaks(peaks, out=PROJECT_ROOT / "output" / "peaks.txt"):
     """Write the peak table to the text file `out`; returns the path."""
     out = Path(out)
-    out.parent.mkdir(exist_ok=True)
+    out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text("\n".join(format_peaks(peaks)) + "\n")
     return out
 
 
-def print_peaks(folder=ROOT / "mcstas_output" / "latest", **kwargs):
+def print_peaks(folder=OUTPUT_DIR / "latest", **kwargs):
     """Print the peaks of a scan, smallest |Q| first. `kwargs` go to `find_peaks`.
     Returns the list of peaks (use `save_peaks` to write them to a file)."""
     peaks = sorted(find_peaks(folder, **kwargs), key=lambda p: np.linalg.norm(p.q))

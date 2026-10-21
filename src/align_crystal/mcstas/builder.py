@@ -15,9 +15,11 @@ from pathlib import Path
 
 from mcstasscript.interface import instr
 
-# McStas-generated files (.instr, .c, compiled binary) and simulation output go here, not in
-# the project root. Created on use.
-OUTPUT_DIR = Path(__file__).resolve().parents[3] / "mcstas_output"
+from align_crystal import PROJECT_ROOT
+
+# McStas-generated files (.instr, .c, compiled binary), McStasScript's input_path: mcrun runs
+# here. Created by `build_mcstas`.
+INPUT_DIR = PROJECT_ROOT / "mcstas_input"
 
 
 def _set_parameters(mcstas_comp, component, instrument):
@@ -47,10 +49,11 @@ def _set_parameters(mcstas_comp, component, instrument):
         setattr(mcstas_comp, name, value)  # McStasScript: one attribute per McStas parameter
 
 
-def build(instrument, input_path=OUTPUT_DIR):
+def build_mcstas(instrument, input_path: str | Path | None = None):
     """Return a McStasScript instrument of `instrument`: its instrument parameters and its
-    components."""
-    Path(input_path).mkdir(parents=True, exist_ok=True)
+    components. Its files go into `input_path` (None for `INPUT_DIR`), created if not there yet."""
+    input_path = Path(input_path or INPUT_DIR)
+    input_path.mkdir(parents=True, exist_ok=True)
     mcstas_instr = instr.McStas_instr(instrument.name, input_path=str(input_path))
     # a run sets its own values with `set_parameters`
     for param in instrument.instr_params:
@@ -60,19 +63,3 @@ def build(instrument, input_path=OUTPUT_DIR):
         mcstas_comp = component.add_to(mcstas_instr)  # placed: AT, ROTATED, RELATIVE
         _set_parameters(mcstas_comp, component, instrument)
     return mcstas_instr
-
-
-if __name__ == "__main__":
-    from align_crystal.instruments import SingleCrystalDiffractometer
-    from align_crystal.samples import la2ni7
-
-    # the sample, in the innermost goniometer arm
-    sample = la2ni7(at=[0, 0, 0], relative="gonio_phi")
-    diffractometer = SingleCrystalDiffractometer(sample)
-    inst = build(diffractometer)
-
-    inst.show_parameters()
-    inst.show_components()
-    inst.show_diagram()
-    inst.write_full_instrument()  # show_instrument_file reads the file on disk: write it first
-    inst.show_instrument_file(line_numbers=True)

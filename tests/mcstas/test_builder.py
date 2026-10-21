@@ -5,12 +5,12 @@ import pytest
 
 from align_crystal.core import Instrument, Monitor, Progress_bar, Slit
 from align_crystal.instruments import SingleCrystalDiffractometer
-from align_crystal.mcstas.builder import build
+from align_crystal.mcstas.builder import build_mcstas
 from align_crystal.samples import la2ni7
 
 
 def test_components_are_added_in_order_with_their_mcstas_names(tmp_path, diffractometer):
-    inst = build(diffractometer(), input_path=tmp_path)
+    inst = build_mcstas(diffractometer(), input_path=tmp_path)
     assert [c.name for c in inst.component_list] == list(diffractometer().components)
     assert [c.component_name for c in inst.component_list] == [
         "Progress_bar", "Source_simple", "Slit", "Monitor", "Arm",
@@ -18,8 +18,14 @@ def test_components_are_added_in_order_with_their_mcstas_names(tmp_path, diffrac
     ]  # fmt: skip
 
 
+def test_the_input_folder_is_created(tmp_path, diffractometer):
+    folder = tmp_path / "new" / "in"
+    inst = build_mcstas(diffractometer(), input_path=folder)
+    assert folder.is_dir() and Path(inst.input_path) == folder
+
+
 def test_the_parameters_and_the_goniometer_rotations(tmp_path, diffractometer):
-    inst = build(diffractometer(), input_path=tmp_path)
+    inst = build_mcstas(diffractometer(), input_path=tmp_path)
     params = {p.name: p.value for p in inst.parameters}
     assert list(params) == ["wavelength", "omega", "chi", "phi"]  # the instrument parameters
     assert params["omega"] == 0  # the default, unless a run gives its own
@@ -33,17 +39,17 @@ def test_the_parameters_and_the_goniometer_rotations(tmp_path, diffractometer):
 
 def test_the_source_focuses_at_the_distance_of_its_focus_on(tmp_path, diffractometer):
     d = diffractometer()
-    source = next(c for c in build(d, input_path=tmp_path).component_list if c.name == "source")
+    source = build_mcstas(d, input_path=tmp_path).get_component("source")
     assert source.dist == pytest.approx(2.0)  # source -> sample_pos
     d.sample_pos.at = [0, 0, 0.6]  # a change is followed: 0.6 m after the monitor, at 1.9 m
-    source = next(c for c in build(d, input_path=tmp_path).component_list if c.name == "source")
+    source = build_mcstas(d, input_path=tmp_path).get_component("source")
     assert source.dist == pytest.approx(2.5)
 
 
 def test_the_sample_of_the_diffractometer_sets_the_mcstas_crystal(tmp_path):
     sample = la2ni7(mosaic=60, at=[0, 0, 0], relative="gonio_phi")
     cfg = SingleCrystalDiffractometer(sample)
-    inst = build(cfg, input_path=tmp_path)
+    inst = build_mcstas(cfg, input_path=tmp_path)
     crystal = next(c for c in inst.component_list if c.name == "sample")
     assert crystal.mosaic == 60 and cfg.sample.reflections in crystal.reflections
     assert Path(
@@ -77,7 +83,7 @@ class _SlitOnly(Instrument):
 
 
 def test_another_instrument_is_built_from_its_components_alone(tmp_path):
-    inst = build(_SlitOnly(), input_path=tmp_path)
+    inst = build_mcstas(_SlitOnly(), input_path=tmp_path)
     assert [c.name for c in inst.component_list] == ["origin", "slit", "monitor"]
     slit, monitor = inst.component_list[1:]
     assert (slit.xwidth, slit.yheight) == (0.02, 0.03)  # the fields of the McStas parameters
@@ -96,14 +102,14 @@ _GappedSlit.__name__ = "Slit"  # still the McStas Slit
 def test_a_field_mcstas_does_not_know_is_left_out(tmp_path):
     d = _SlitOnly()
     d.slit = _GappedSlit(xwidth=0.02, yheight=0.03, at=[0, 0, 1.0], relative="origin")
-    slit = build(d, input_path=tmp_path).get_component("slit")
+    slit = build_mcstas(d, input_path=tmp_path).get_component("slit")
     assert slit.xwidth == 0.02 and "gap" not in slit.parameter_names
 
 
 def test_a_computed_value_mcstas_does_not_know_raises(tmp_path, monkeypatch):
     monkeypatch.setattr(Monitor, "mcstas_parameters", lambda *_: {"bogus": 1})
     with pytest.raises(ValueError, match=r"monitor \(Monitor\): no McStas parameter \['bogus'\]"):
-        build(_SlitOnly(), input_path=tmp_path)
+        build_mcstas(_SlitOnly(), input_path=tmp_path)
 
 
 def test_a_component_that_computes_nothing_passes_its_fields_through():
@@ -115,4 +121,4 @@ def test_the_source_focuses_on_a_component_of_the_instrument(tmp_path, diffracto
     d = diffractometer()
     d.source.focus_on = "nowhere"
     with pytest.raises(ValueError, match="source: focus_on 'nowhere' is no component"):
-        build(d, input_path=tmp_path)
+        build_mcstas(d, input_path=tmp_path)

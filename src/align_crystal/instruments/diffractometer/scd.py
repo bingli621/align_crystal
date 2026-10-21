@@ -118,15 +118,3 @@ class SingleCrystalDiffractometer(Instrument):
             InstrParam("chi", p.chi, "deg", "goniometer rotation about -Z"),
             InstrParam("phi", p.phi, "deg", "goniometer rotation about +X"),
         ]
-
-
-if __name__ == "__main__":
-    from align_crystal.samples import la2ni7
-
-    sample = la2ni7(at=[0, 0, 0], relative="gonio_phi")
-
-    diffractometer = SingleCrystalDiffractometer(sample)
-    print(diffractometer)
-    print(diffractometer.params)
-    print(diffractometer.source)
-    print(sample)

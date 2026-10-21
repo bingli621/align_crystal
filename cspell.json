@@ -1,0 +1,16 @@
+{
+  "version": "0.2",
+  "language": "en,en-GB",
+  "ignorePaths": [".pixi", "mcstas_input", "mcstas_output", "output", "*.cif"],
+  "words": [
+    "McStas", "Stas", "mcstas", "mcstasscript", "mcstastox", "mcrun", "mccode", "MCPL",
+    "backengine", "ncount", "dlambda", "dphi", "xwidth", "yheight", "zdepth",
+    "beamline", "diffractometers", "gonio", "astar", "bstar", "cstar", "recip",
+    "Oosterom", "Strackee", "histogrammed", "histogramming", "nsigma", "Errorbar", "horiz",
+    "scipp", "scippneutron", "scippnexus", "pixi", "pytest", "dataclass", "kwargs", "gifs",
+    "roundtrips", "allclose", "arctan", "argwhere", "atleast", "eigvalsh", "keepdims", "linalg",
+    "ndimage", "blit", "cmap", "colorbar", "figsize", "pcolormesh", "vmax", "vmin", "xlabel",
+    "ylabel", "Mult"
+  ],
+  "ignoreWords": ["omgea", "xwidht"]
+}

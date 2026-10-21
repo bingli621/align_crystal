@@ -35,7 +35,8 @@ src/align_crystal/   the library (installed)
   mcstas/       everything that talks to McStas
     builder.py        builds the McStasScript instrument of any instrument: places each component,
                       sets its McStas parameters (each component's mcstas_parameters)
-    simulater.py      run, dump_beam, run_from_beam (also runnable as a script); `config` is the diffractometer
+    simulation.py     Simulation(instrument): run, dump_beam, run_from_beam, read (also runnable
+                      as a script)
     h5_reader.py      read_scan: the NeXus output via mcstastox
   reduction/    to_Q, to_sample_frame, solid-angle normalization, find_peaks
 scripts/        plot_scan_2d.py, plot_scan_Q.py (gifs), print_peaks.py
@@ -85,7 +86,7 @@ from the params when used (never saved): the wavelength of `ei` (`Source_simple.
 `lambda0` names it), and the goniometer angles. Where a component takes a number it names an
 instrument parameter instead (or an expression of them), as in McStas: the goniometer arms have
 `rotated: [0, omega, 0]` etc. A run may give its own values in place of the diffractometer's
-(`run(config=d, omega=30)`).
+(`Simulation(d).run(omega=30)`).
 
 Every McStas run records its wavelength and angles, and the
 reduction reads them from the scan (`find_peaks(folder)`); give `find_peaks(folder, wavelength(14))`
@@ -103,13 +104,13 @@ slit:
 ```
 
 ```python
-from align_crystal.mcstas.simulater import run
+from align_crystal.mcstas.simulation import Simulation
 from align_crystal.instrument import Params, SingleCrystalDiffractometer
 from align_crystal.io import load
 
-# config: the diffractometer to simulate, the default one with the file laid over it
-h5 = run(
-    config=load("my_params.yaml", params=Params(ei=14)),
+# the diffractometer to simulate, the default one with the file laid over it
+sim = Simulation(load("my_params.yaml", params=Params(ei=14)))
+h5 = sim.run(
     omega="-48,73",
     chi=0,
     phi=0,
@@ -119,15 +120,17 @@ h5 = run(
 # a sample (none by default)
 from align_crystal.instrument import la2ni7
 
-h5 = run(
-    config=SingleCrystalDiffractometer(
+sim = Simulation(
+    SingleCrystalDiffractometer(
         la2ni7(mosaic=60, at=[0, 0, 0], relative="gonio_phi"), Params(ei=14)
-    ),
-    omega="-48,73",
-    chi=-5.893,
-    phi=0,
-    custom_flags="-N 122",
+    )
 )
+h5 = sim.run(omega="-48,73", chi=-5.893, phi=0, custom_flags="-N 122")
+points = sim.read()  # a (parameters, events) per scan point
+
+# a split run: the beam once, then the crystal for many omegas in parallel
+sim.dump_beam(ncount=1e8)
+sim.run_from_beam(omegas=range(-48, 83), chi=-5.893, phi=0)
 ```
 
 A diffractometer can be created in these ways:
@@ -153,7 +156,7 @@ save(d, "copy.yaml")
 ## Use
 
 ```bash
-pixi run python src/align_crystal/mcstas/simulater.py   # edit MODE: one run, or beam dump + run from the beam
+pixi run python src/align_crystal/mcstas/simulation.py  # edit MODE: one run, or beam dump + run from the beam
 pixi run python scripts/plot_scan_2d.py                 # output/scan.gif
 pixi run python scripts/plot_scan_Q.py                  # output/scan_Q.gif
 pixi run python scripts/print_peaks.py                  # peak list of mcstas_output/latest
@@ -162,7 +165,7 @@ pixi run pre-commit install                             # once: ruff format on e
 ```
 
 Results go to `mcstas_output/` (`latest/`, and `beam/` + `split/` for the split run). A split run
-simulates source to sample once (`dump_beam`) and then the crystal for many angles in parallel
+simulates source to sample once (`Simulation.dump_beam`) and then the crystal for many angles in parallel
 (`run_from_beam`), which can be normalized with the beam run's incident monitor.
 
 `mcstastox` is installed from the `entry_choice` branch, which can read individual scan entries.

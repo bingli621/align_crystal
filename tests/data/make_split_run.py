@@ -11,7 +11,7 @@ import subprocess
 from pathlib import Path
 
 from align_crystal.instrument import SingleCrystalDiffractometer, la2ni7
-from align_crystal.mcstas.simulater import dump_beam, run_from_beam
+from align_crystal.mcstas.simulation import Simulation
 
 HERE = Path(__file__).parent / "split_run"
 CRYSTAL = {"mosaic": 60, "at": [0, 0, 0], "relative": "gonio_phi"}
@@ -19,13 +19,10 @@ CRYSTAL = {"mosaic": 60, "at": [0, 0, 0], "relative": "gonio_phi"}
 if __name__ == "__main__":
     work = HERE.parent / "_split_run_work"
     shutil.rmtree(work, ignore_errors=True)
-    diffractometer = SingleCrystalDiffractometer(la2ni7(**CRYSTAL))  # 14 meV
-    beam = dump_beam(output_path=work / "beam", ncount=2e4, config=diffractometer)
-    run_from_beam(
+    sim = Simulation(SingleCrystalDiffractometer(la2ni7(**CRYSTAL)), output_dir=work)  # 14 meV
+    sim.dump_beam(ncount=2e4)  # into work/beam
+    sim.run_from_beam(  # into work/split, from that beam
         omegas=[-5, 5],
-        beam_file=beam,
-        output_path=work / "split",
-        config=diffractometer,
         chi=-5.893,
         phi=0.0,
         n_jobs=2,

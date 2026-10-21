@@ -1,7 +1,8 @@
 """Make the small split run in tests/data/split_run/ that the reduction tests read.
 
-A beam run (`dump_beam`) and a run from its beam at two omegas (`run_from_beam`) of La2Ni7 at
-14 meV. Only the two `mccode.h5` files are kept, their large datasets compressed (h5repack).
+A beam run (`run_to_sample`) and a scan from its beam over two omegas (`scan_from_sample`) of
+La2Ni7 at 14 meV. Only the two `mccode.h5` files are kept, their large datasets compressed
+(h5repack).
 Rerun it (`pixi run python tests/data/make_split_run.py`) if McStas output changes in a way the
 tests should follow.
 """
@@ -21,9 +22,10 @@ if __name__ == "__main__":
     work = HERE.parent / "_split_run_work"
     shutil.rmtree(work, ignore_errors=True)
     sim = Simulation(SingleCrystalDiffractometer(la2ni7(**CRYSTAL)), output_dir=work)  # 14 meV
-    sim.dump_beam(ncount=2e4)  # into work/beam
-    sim.run_from_beam(  # into work/split, from that beam
-        omegas=[-5, 5],
+    sim.run_to_sample(ncount=2e4)  # into work/beam
+    sim.scan_from_sample(  # into work/split, from that beam
+        "omega",
+        [-5, 5],
         chi=-5.893,
         phi=0.0,
         n_jobs=2,

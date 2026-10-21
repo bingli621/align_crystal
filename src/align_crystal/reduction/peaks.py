@@ -113,7 +113,7 @@ def find_peaks(
     fewer than `min_points` pixel contributions, or an intensity below `min_significance` times
     its uncertainty, are dropped. `wavelength` (a scipp scalar,
     `reduction.wavelength(ei)`; None: the one the scan stores) is passed to `load_points`; give
-    `points` (from `load_points`) to reuse loaded data. For data from `run_from_beam`, give the beam run's
+    `points` (from `load_points`) to reuse loaded data. For data from `scan_from_sample`, give the beam run's
     `monitor_file` (see `normalize_scan`).
     """
     p = points if points is not None else load_points(folder, wavelength, monitor_file=monitor_file)

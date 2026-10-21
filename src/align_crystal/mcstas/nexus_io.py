@@ -1,10 +1,12 @@
-"""Read McStas NeXus (HDF5) output, including mcrun scans, with mcstastox.
+"""Read and write McStas NeXus (HDF5) output: `read_scan` reads it with mcstastox,
+`merge_entries` makes one scan file of single-run files.
 
 A scan file holds one entry per scan point (entry1, entry2, ...). This needs the mcstastox
 branch with `entry_number` support (https://github.com/mads-bertelsen-agentic/McStasToX,
 branch entry_choice).
 """
 
+import h5py
 import mcstastox
 import numpy as np
 import scipp as sc
@@ -29,7 +31,7 @@ def read_scan(folder, component="detector", source="source", sample="sample_pos"
     `position`, `pixel_id`, `gamma` [deg, signed in-plane scattering angle, negative to the right
     of the beam; not scippneutron's two_theta, which is the full angle between ki and kf] and `y` [m] (height above the sample). Only pixels that were hit are included.
 
-    A split run (`run_from_beam`) has no source in its file: its `source_position` is then put
+    A split run (`scan_from_sample`) has no source in its file: its `source_position` is then put
     1 m upstream of the sample along the beam (+z, as in this instrument), which gives the right
     incident direction for the elastic Q (its distance does not matter).
     """
@@ -55,3 +57,13 @@ def read_scan(folder, component="detector", source="source", sample="sample_pos"
         pixels.coords["y"] = sc.array(dims=["pixel_id"], values=y, unit="m")
         points.append((params, pixels))
     return points
+
+
+def merge_entries(files, merged):
+    """Write the single-entry McStas file of each of `files` into one scan file `merged`, as
+    `entry1`, `entry2`, ... in the order of `files`. Returns `merged`."""
+    with h5py.File(merged, "w") as out:
+        for n, file in enumerate(files, start=1):
+            with h5py.File(file) as part:
+                part.copy(part["entry1"], out, name=f"entry{n}")
+    return merged

@@ -52,8 +52,10 @@ def _set_parameters(mcstas_comp, component, instrument):
 def build_mcstas(instrument, input_path: str | Path | None = None):
     """Return a McStasScript instrument of `instrument`: its instrument parameters and its
     components. Its files go into `input_path` (None for `INPUT_DIR`), created if not there yet."""
+
     input_path = Path(input_path or INPUT_DIR)
     input_path.mkdir(parents=True, exist_ok=True)
+
     mcstas_instr = instr.McStas_instr(instrument.name, input_path=str(input_path))
     # a run sets its own values with `set_parameters`
     for param in instrument.instr_params:

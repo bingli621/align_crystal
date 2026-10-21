@@ -16,7 +16,7 @@ from matplotlib.animation import FuncAnimation, PillowWriter
 from matplotlib.colors import LogNorm
 
 from align_crystal import PROJECT_ROOT
-from align_crystal.mcstas.h5_reader import read_scan
+from align_crystal.mcstas.nexus_io import read_scan
 from align_crystal.mcstas.simulation import OUTPUT_DIR
 
 

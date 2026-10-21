@@ -19,7 +19,7 @@ from matplotlib.animation import FuncAnimation, PillowWriter
 from matplotlib.colors import LogNorm
 
 from align_crystal import PROJECT_ROOT
-from align_crystal.mcstas.h5_reader import read_scan
+from align_crystal.mcstas.nexus_io import read_scan
 from align_crystal.mcstas.simulation import OUTPUT_DIR
 from align_crystal.reduction import normalize_scan, run_wavelength, to_Q, to_sample_frame
 
@@ -39,7 +39,7 @@ def plot_scan_Q(
     """Saves a gif to `out` (None: don't save); returns the FuncAnimation.
 
     With `normalize`, the intensities are divided by the incident monitor and the pixel solid
-    angle (see `normalize_scan`), in 1/sr. For data from `run_from_beam` give the beam run's
+    angle (see `normalize_scan`), in 1/sr. For data from `scan_from_sample` give the beam run's
     `monitor_file` (`OUTPUT_DIR / "beam" / "mccode.h5"`). `wavelength` (a scipp scalar, e.g.
     `reduction.wavelength(14)`): None takes the one each scan point stores.
 
@@ -115,7 +115,7 @@ def plot_scan_Q(
 
 
 if __name__ == "__main__":
-    # normalized (Qx, Qz) map of a run_from_beam scan, using the monitor of the beam run
+    # normalized (Qx, Qz) map of a scan_from_sample scan, using the monitor of the beam run
     plot_scan_Q(
         folder=OUTPUT_DIR / "split",
         out=PROJECT_ROOT / "output" / "scan_Q_normalized.gif",

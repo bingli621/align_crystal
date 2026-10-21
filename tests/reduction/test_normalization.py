@@ -6,7 +6,7 @@ import mcstastox
 import numpy as np
 import pytest
 
-from align_crystal.mcstas.h5_reader import numeric_parameters, read_scan
+from align_crystal.mcstas.nexus_io import numeric_parameters, read_scan
 from align_crystal.reduction import find_peaks, normalize_scan, run_wavelength, to_Q, wavelength
 from align_crystal.reduction.peaks import load_points
 
@@ -16,7 +16,7 @@ MONITOR = DATA / "beam" / "mccode.h5"
 
 
 def test_the_split_run_stores_its_own_parameters():
-    """Every entry records the wavelength and its angles (run_from_beam writes them as defaults:
+    """Every entry records the wavelength and its angles (scan_from_sample writes them as defaults:
     McStas only records a parameter that has one)."""
     params = []
     for entry in (1, 2):

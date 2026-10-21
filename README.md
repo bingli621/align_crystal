@@ -38,9 +38,10 @@ src/align_crystal/   the library (installed)
   mcstas/       everything that talks to McStas
     builder.py        builds the McStasScript instrument of any instrument: places each component,
                       sets its McStas parameters (each component's mcstas_parameters)
-    simulation.py     Simulation(instrument): run, dump_beam, run_from_beam, read (also runnable
-                      as a script)
-    h5_reader.py      read_scan: the NeXus output via mcstastox
+    simulation.py     Simulation(instrument): run, scan, run_to_sample, run_from_sample,
+                      scan_from_sample
+    nexus_io.py       read_scan: the NeXus output via mcstastox; merge_entries: single runs
+                      into one scan file
   reduction/    to_Q, to_sample_frame, solid-angle normalization, find_peaks
 scripts/        build_instrument.py, plot_scan_2d.py, plot_scan_Q.py (gifs), print_peaks.py
 tests/
@@ -52,7 +53,7 @@ Dependencies point inwards (clean architecture): `core` holds the entities any i
 shares and imports nothing from the outer layers; `instruments` (each instrument) and `samples` (the
 ready-made samples, placed by the caller with `relative`) build on it. Around it are adapters: `io` converts any instrument
 to and from its nested dict and YAML files, `mcstas` simulates a `SingleCrystalDiffractometer` that the caller creates;
-the sample is the diffractometer's `sample` (a `Single_crystal`, optional); `reduction` reads the McStas output with `mcstas.h5_reader`.
+the sample is the diffractometer's `sample` (a `Single_crystal`, optional); `reduction` reads the McStas output with `mcstas.nexus_io`.
 
 ## Configuration
 
@@ -109,18 +110,16 @@ slit:
 ```
 
 ```python
+import numpy as np
+
+from align_crystal.mcstas.nexus_io import read_scan
 from align_crystal.mcstas.simulation import Simulation
 from align_crystal.instruments import Params, SingleCrystalDiffractometer
 from align_crystal.io import load
 
 # the diffractometer to simulate, the default one with the file laid over it
 sim = Simulation(load("my_params.yaml", params=Params(ei=14)))
-h5 = sim.run(
-    omega="-48,73",
-    chi=0,
-    phi=0,
-    custom_flags="-N 122",
-)  # scan omega
+h5 = sim.scan("omega", np.linspace(-48, 73, 122), chi=0, phi=0)  # a run per omega
 
 # a sample (none by default)
 from align_crystal.samples import la2ni7
@@ -130,12 +129,13 @@ sim = Simulation(
         la2ni7(mosaic=60, at=[0, 0, 0], relative="gonio_phi"), Params(ei=14)
     )
 )
-h5 = sim.run(omega="-48,73", chi=-5.893, phi=0, custom_flags="-N 122")
-points = sim.read()  # a (parameters, events) per scan point
+h5 = sim.scan("omega", np.linspace(-48, 73, 122), chi=-5.893, phi=0)
+points = read_scan(h5.parent)  # a (parameters, events) per scan point
 
-# a split run: the beam once, then the crystal for many omegas in parallel
-sim.dump_beam(ncount=1e8)
-sim.run_from_beam(omegas=range(-48, 83), chi=-5.893, phi=0)
+# a split run: the beam once, then the crystal for one omega, or many in parallel
+sim.run_to_sample(ncount=1e8)
+sim.run_from_sample(omega=30, chi=-5.893, phi=0)
+sim.scan_from_sample("omega", range(-48, 83), chi=-5.893, phi=0)
 ```
 
 A diffractometer can be created in these ways:
@@ -162,8 +162,7 @@ save(d, "copy.yaml")
 ## Use
 
 ```bash
-pixi run python src/align_crystal/mcstas/simulation.py  # edit MODE: one run, or beam dump + run from the beam
-pixi run python scripts/build_instrument.py             # mcstas_input/: the .instr file, its diagram
+pixi run python scripts/build_instrument.py             # the .instr file, its diagram; edit MODE: a scan, or beam dump + scan from the beam
 pixi run python scripts/plot_scan_2d.py                 # output/scan.gif
 pixi run python scripts/plot_scan_Q.py                  # output/scan_Q.gif
 pixi run python scripts/print_peaks.py                  # peak list of mcstas_output/latest
@@ -174,7 +173,7 @@ pixi run pre-commit install                             # once: ruff format on e
 McStas builds in `mcstas_input/` and results go to `mcstas_output/` (`latest/`, and `beam/` +
 `split/` for the split run); `Simulation(d, output_dir=..., input_dir=...)` takes others, and the
 environment variable `ALIGN_CRYSTAL_ROOT` moves both. A split run
-simulates source to sample once (`Simulation.dump_beam`) and then the crystal for many angles in parallel
-(`run_from_beam`), which can be normalized with the beam run's incident monitor.
+simulates source to sample once (`Simulation.run_to_sample`) and then the crystal for one angle (`run_from_sample`) or many in
+parallel (`scan_from_sample`), which can be normalized with the beam run's incident monitor.
 
 `mcstastox` is installed from the `entry_choice` branch, which can read individual scan entries.

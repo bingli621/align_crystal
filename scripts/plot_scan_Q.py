@@ -115,10 +115,11 @@ def plot_scan_Q(
 
 
 if __name__ == "__main__":
-    # normalized (Qx, Qz) map of a scan_from_sample scan, using the monitor of the beam run
+    # normalized (Qx, Qz) map of a scan (source -> detector), each point by its own monitor.
+    # For a scan_from_sample scan: folder=OUTPUT_DIR / "split",
+    # monitor_file=OUTPUT_DIR / "beam" / "mccode.h5" (the monitor of the beam run)
     plot_scan_Q(
-        folder=OUTPUT_DIR / "split",
-        out=PROJECT_ROOT / "output" / "scan_Q_normalized.gif",
+        folder=OUTPUT_DIR / "latest",
+        out=PROJECT_ROOT / "output" / "scan_Q_normalized_132pts.gif",
         normalize=True,
-        monitor_file=OUTPUT_DIR / "beam" / "mccode.h5",
     )

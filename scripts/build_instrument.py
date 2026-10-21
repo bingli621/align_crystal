@@ -51,7 +51,7 @@ def create_mcstas(instrument, input_path=None, plot=True):
 
 # the `Simulation` method `run_simulation` runs: "run" | "scan" | "run_to_sample" (split part 1)
 # | "run_from_sample" | "scan_from_sample" (split part 2, from the beam of part 1)
-MODE = "run_to_sample"
+MODE = "scan"
 
 
 def run_simulation(instrument, mode=MODE):
@@ -59,9 +59,9 @@ def run_simulation(instrument, mode=MODE):
     the file it wrote."""
     sim = Simulation(instrument)
     if mode == "run":
-        h5_file = sim.run(ncount=1e6, omega=30.0, chi=-5.893, phi=0.0)
+        h5_file = sim.run(ncount=1e8, omega=30.0, chi=-5.893, phi=0.0)
     elif mode == "scan":
-        h5_file = sim.scan("omega", np.linspace(-48, 83, 11), ncount=1e6, chi=-5.893, phi=0.0)
+        h5_file = sim.scan("omega", np.linspace(-48, 83, 132), ncount=1e7, chi=-5.893, phi=0.0)
     elif mode == "run_to_sample":
         h5_file = sim.run_to_sample(ncount=1e8)
     elif mode == "run_from_sample":
@@ -75,5 +75,5 @@ def run_simulation(instrument, mode=MODE):
 
 if __name__ == "__main__":
     scd = create_instrument()
-    create_mcstas(scd)
+    # create_mcstas(scd)
     run_simulation(scd)

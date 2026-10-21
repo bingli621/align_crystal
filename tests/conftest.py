@@ -2,11 +2,9 @@ import copy
 
 import pytest
 
-from align_crystal.instrument import (
-    SingleCrystalDiffractometer,
-    aluminum,
-)
+from align_crystal.instruments import SingleCrystalDiffractometer
 from align_crystal.io import from_dict, to_dict
+from align_crystal.samples import aluminum
 
 
 def _update(base, changes):

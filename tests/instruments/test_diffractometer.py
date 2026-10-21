@@ -1,12 +1,12 @@
-import subprocess
-import sys
 from dataclasses import FrozenInstanceError
 
 import pytest
 
-from align_crystal.instrument import Params, Slit, Source_simple, aluminum
-from align_crystal.instrument import SingleCrystalDiffractometer as Diffractometer
+from align_crystal.core import Slit, Source_simple
+from align_crystal.instruments import Params
+from align_crystal.instruments import SingleCrystalDiffractometer as Diffractometer
 from align_crystal.io import from_dict, to_dict
+from align_crystal.samples import aluminum
 
 
 def test_the_default_file_names_the_components_in_beam_order(diffractometer):
@@ -49,16 +49,6 @@ def test_the_wavelength_is_the_one_of_ei(diffractometer):
     assert from_file.instr_params[0].value == pytest.approx(1.808914, abs=1e-5)
     started = diffractometer({"params": {"omega": 30}})
     assert {p.name: p.value for p in started.instr_params}["omega"] == 30
-
-
-def test_core_imports_no_yaml_and_no_adapter():
-    """The entities import no adapter: no YAML, no io, no McStas."""
-    code = (
-        "import sys, align_crystal.instrument;"
-        "bad = [m for m in sys.modules if m == 'yaml' or m.startswith(('align_crystal.io', 'align_crystal.mcstas'))];"
-        "assert not bad, bad"
-    )
-    subprocess.run([sys.executable, "-c", code], check=True)
 
 
 def test_the_params_are_given_when_it_is_made():

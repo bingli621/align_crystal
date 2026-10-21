@@ -1,9 +1,9 @@
-# The diffractometer made in code (instrument/diffractometer.py), saved: a reference of how a
+# The diffractometer made in code (instruments/diffractometer/), saved: a reference of how a
 # parameters file looks. A file you load with load(path) (yaml_io.py) names its instrument and is
 # laid over the one the code makes, so it need hold only what differs: a value it gives wins, one
 # it leaves out or sets to null stays as made.
-instrument: SingleCrystalDiffractometer  # the instrument class (instrument/diffractometer.py)
-name: single_crystal_diffractometer      # McStas instrument name
+instrument: SingleCrystalDiffractometer  # the instrument class (instruments/diffractometer/)
+name: scd                                # McStas instrument name
 
 # The params of the diffractometer, each with its value, unit and comment (from the metadata of
 # Params). A unit, if given, must be the one in the code; the comment is only for reading; a bare
@@ -19,7 +19,7 @@ params:
 
 # One section per component name, in the order of the beam: the order in which the components are
 # built (a component can only be relative to one before it). Each has its `component` (the McStas
-# component, the class of the same name in instrument/components/), its parameters, and where it
+# component, the class of the same name in core/components/), its parameters, and where it
 # sits: McStas AT (m), ROTATED (deg; numbers or instrument parameter names) and RELATIVE (a
 # component name; null = absolute). The name is also the instance name in McStas.
 # Last, `position` is where it is in the lab frame (m), calculated from those with the params'
@@ -91,7 +91,7 @@ gonio_phi:
   relative: gonio_chi
   position: [0.0, 0.0, 2.0]
 
-# A cube of a single crystal: here aluminium (aluminum() in instrument/samples/), its cubic axes
+# A cube of a single crystal: here aluminium (aluminum() in samples/), its cubic axes
 # along the lab axes.
 sample:
   component: Single_crystal

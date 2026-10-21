@@ -1,7 +1,7 @@
 """The single-crystal diffractometer: source -> slit -> incident monitor -> goniometer (three
 nested arms) + sample -> detector.
 
-`SingleCrystalDiffractometer(sample, params)`, an `Instrument` (base.py: what every
+`SingleCrystalDiffractometer(sample, params)`, an `Instrument` (core/base.py: what every
 instrument shares), makes its own components (the defaults, set in `__init__`; lengths in m, angles
 in deg) around the `sample`. Its control parameters are `Params` (here: `ei` and the goniometer
 angles); the instrument parameters McStas gets (`instr_params`: the wavelength of `ei`,
@@ -14,8 +14,8 @@ instrument from it.
 
 from dataclasses import dataclass
 
-from align_crystal.instrument.base import Instrument
-from align_crystal.instrument.components import (
+from align_crystal.core.base import Instrument
+from align_crystal.core.components import (
     Arm,
     Monitor,
     Monitor_nD,
@@ -24,7 +24,7 @@ from align_crystal.instrument.components import (
     Slit,
     Source_simple,
 )
-from align_crystal.instrument.params import InstrParam, param
+from align_crystal.core.params import InstrParam, param
 
 
 @dataclass(frozen=True)
@@ -47,7 +47,7 @@ class SingleCrystalDiffractometer(Instrument):
     (`Params`: `ei`, `omega`, `chi`, `phi`), from which follow its instrument parameters."""
 
     params_class = Params
-    name = "single_crystal_diffractometer"  # the McStas instrument name
+    name = "scd"  # the McStas instrument name
 
     # the components, for type hints; `__init__` sets them, and its order is the beam's
     origin: Progress_bar
@@ -63,7 +63,7 @@ class SingleCrystalDiffractometer(Instrument):
 
     def __init__(self, sample: Single_crystal | None = None, params: Params = DEFAULT_PARAMS):
         """The default diffractometer (lengths in m, angles in deg) around `sample` (e.g.
-        `la2ni7(at=[0, 0, 0], relative="gonio_phi")`; None: none), with its control parameters
+        `la2ni7(at=[0, 0, 0], relative="gonio_phi")` from samples/; None: none), with its control parameters
         `params` (e.g. `Params(ei=25, omega=30)`; a run may give its own angles)."""
         super().__init__(params)
         self.origin = Progress_bar(at=[0, 0, 0])
@@ -121,7 +121,7 @@ class SingleCrystalDiffractometer(Instrument):
 
 
 if __name__ == "__main__":
-    from align_crystal.instrument.samples import la2ni7
+    from align_crystal.samples import la2ni7
 
     sample = la2ni7(at=[0, 0, 0], relative="gonio_phi")
 

@@ -7,7 +7,7 @@ import numpy as np
 import scipp as sc
 from scippneutron.conversion.graph import beamline, tof
 
-from align_crystal.instrument.geometry import rotation
+from ..core.geometry import rotation
 
 # scippneutron graph: positions -> two_theta (angle between ki and kf) -> momentum transfer
 Q_GRAPH = {

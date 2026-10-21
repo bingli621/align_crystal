@@ -3,15 +3,10 @@ from pathlib import Path
 
 import pytest
 
-from align_crystal.instrument import (
-    Instrument,
-    Monitor,
-    Progress_bar,
-    SingleCrystalDiffractometer,
-    Slit,
-    la2ni7,
-)
+from align_crystal.core import Instrument, Monitor, Progress_bar, Slit
+from align_crystal.instruments import SingleCrystalDiffractometer
 from align_crystal.mcstas.builder import build
+from align_crystal.samples import la2ni7
 
 
 def test_components_are_added_in_order_with_their_mcstas_names(tmp_path, diffractometer):

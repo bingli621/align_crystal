@@ -1,7 +1,7 @@
 """The single crystal, and how to orient one in the lab frame.
 
 Lab frame (McStas): z along the beam, y up, x to the left of the beam. Ready-made crystals are in
-instrument/samples/.
+samples/.
 """
 
 from dataclasses import dataclass
@@ -11,8 +11,9 @@ import numpy as np
 
 from .base import Component
 
-# the CIF files of the ready-made samples: a crystal's `reflections` names one relative to it
-CIF_DIR = Path(__file__).resolve().parents[1] / "samples"
+# the CIF files of the ready-made samples (align_crystal/samples/; only the folder, not imported):
+# a crystal's `reflections` names one relative to it
+CIF_DIR = Path(__file__).resolve().parents[2] / "samples"
 
 
 @dataclass(kw_only=True, repr=False)  # repr: Component's
@@ -20,7 +21,7 @@ class Single_crystal(Component):
     """A cube of a single crystal of `lattice_params`, oriented so that the reciprocal vector
     `along_beam` (hkl) is along the beam (+z) and `in_plane` (hkl) is in the horizontal (x-z)
     plane towards +x (left of the beam), when all goniometer angles are zero. Ready-made crystals:
-    instrument/samples/ (`aluminum`, `la2ni7`).
+    samples/ (`aluminum`, `la2ni7`).
 
     `astar`, `bstar`, `cstar`, its reciprocal-lattice vectors in the lab frame (1/angstrom, incl.
     2pi), are computed from these when used (so they follow a change of them); they are not
@@ -30,7 +31,7 @@ class Single_crystal(Component):
     lattice_params: list  # a, b, c (angstrom), alpha, beta, gamma (deg)
     along_beam: list  # hkl along the beam
     in_plane: list  # hkl in the horizontal plane, towards +x
-    reflections: str  # a McStas list (Al.lau), or a CIF file relative to instrument/samples/
+    reflections: str  # a McStas list (Al.lau), or a CIF file relative to samples/
     xwidth: float = 0.005  # m: a cube by default
     yheight: float = 0.005  # m
     zdepth: float = 0.005  # m
@@ -40,7 +41,7 @@ class Single_crystal(Component):
 
     def mcstas_parameters(self, inst):
         """Its fields, with its reciprocal vectors in the lab frame (so recip_cell must be 1); its
-        reflections a CIF file of instrument/samples/ (as a full path), else as given (a McStas
+        reflections a CIF file of samples/ (as a full path), else as given (a McStas
         list)."""
         if self.recip_cell != 1:
             raise ValueError(f"{self.name}: recip_cell {self.recip_cell}: only 1 is computed")

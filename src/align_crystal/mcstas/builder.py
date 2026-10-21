@@ -63,7 +63,8 @@ def build(instrument, input_path=OUTPUT_DIR):
 
 
 if __name__ == "__main__":
-    from align_crystal.instrument import SingleCrystalDiffractometer, la2ni7
+    from align_crystal.instruments import SingleCrystalDiffractometer
+    from align_crystal.samples import la2ni7
 
     # the sample, in the innermost goniometer arm
     sample = la2ni7(at=[0, 0, 0], relative="gonio_phi")

@@ -1,8 +1,8 @@
 import numpy as np
 import pytest
 
-from align_crystal.instrument import Arm
-from align_crystal.instrument.geometry import place_absolute, rotation
+from align_crystal.core import Arm
+from align_crystal.core.geometry import place_absolute, rotation
 
 
 def test_a_rotation_takes_the_lab_frame_to_the_rotated_one():

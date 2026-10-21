@@ -1,13 +1,13 @@
 """An instrument to and from its nested dict: what a parameters file holds, in any format.
 
-Any `Instrument` (instrument/base.py): the dict names its class (`instrument`, a key of
+Any `Instrument` (core/base.py): the dict names its class (`instrument`, a key of
 INSTRUMENTS), its params are those of the class's `params_class`, its components its own. Every
 dict, complete or of overrides, must name a class of INSTRUMENTS: there is no default, and a
 missing or unknown one raises ValueError. The dict, here of the diffractometer, in the layout of
-params.yaml:
+its params.yaml (instruments/diffractometer/):
 
     instrument: SingleCrystalDiffractometer   # the class: a key of INSTRUMENTS
-    name: single_crystal_diffractometer
+    name: scd
     params:                   # each param: its value, unit and comment (its field's metadata)
       ei: {value: 14.0, unit: meV, comment: incident energy}
       ...
@@ -40,8 +40,9 @@ merge(defaults, overrides)           how a dict is laid over another
 import copy
 from dataclasses import asdict, fields
 
-from ..instrument import INSTRUMENTS, Instrument
-from ..instrument.components import COMPONENTS
+from .. import instruments  # noqa: F401  (adds every instrument to INSTRUMENTS)
+from ..core import INSTRUMENTS, Instrument
+from ..core.components import COMPONENTS
 
 
 def to_dict(instrument: Instrument) -> dict:

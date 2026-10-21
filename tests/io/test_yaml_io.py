@@ -2,17 +2,11 @@ from dataclasses import dataclass
 
 import pytest
 
-from align_crystal.instrument import (
-    InstrParam,
-    Instrument,
-    Progress_bar,
-    SingleCrystalDiffractometer,
-    Slit,
-    aluminum,
-    la2ni7,
-)
-from align_crystal.instrument.params import param
-from align_crystal.io import PARAMS_FILE, load, read_yaml, save, to_dict, write_yaml
+from align_crystal.core import InstrParam, Instrument, Progress_bar, Slit
+from align_crystal.core.params import param
+from align_crystal.instruments import PARAMS_FILE, SingleCrystalDiffractometer
+from align_crystal.io import load, read_yaml, save, to_dict, write_yaml
+from align_crystal.samples import aluminum, la2ni7
 
 
 def test_write_then_read_gives_the_same_dict(tmp_path):

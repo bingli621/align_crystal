@@ -2,7 +2,7 @@
 
 param: a field of a control-parameters dataclass, with its unit and comment in its metadata (what
 io/ writes next to its value). Every instrument's `params_class` is made of them (the
-diffractometer's: `Params` in diffractometer.py).
+diffractometer's: `Params` in instruments/diffractometer/scd.py).
 
 InstrParam: one McStas instrument parameter, which McStas takes and a run may set; an instrument's
 `instr_params` is the list of them (each with its value, unit and comment), calculated from its

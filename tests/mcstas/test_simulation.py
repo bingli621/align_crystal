@@ -1,4 +1,4 @@
-from align_crystal.instrument import Params, SingleCrystalDiffractometer
+from align_crystal.instruments import Params, SingleCrystalDiffractometer
 from align_crystal.mcstas.simulation import Simulation
 
 

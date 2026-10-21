@@ -1,9 +1,10 @@
-"""Ready-made samples: each function gives a `Single_crystal` of its own lattice and orientation,
-with its CIF file (if any) in this folder.
+"""Ready-made samples, for any instrument: each function gives a `Single_crystal` of its own
+lattice and orientation, with its CIF file (if any) in this folder. Where it sits is the caller's:
+`at`, and `relative`, a component of the instrument (e.g. the diffractometer's "gonio_phi").
 
 `params` are the crystal's other parameters, or ones to change, e.g.
 `la2ni7(mosaic=60, at=[0, 0, 0], relative="gonio_phi")`. `reflections` names a CIF file relative to
-this folder (`CIF_DIR` of components/crystal.py), so a saved parameters file is portable.
+this folder (`CIF_DIR` of core/components/crystal.py), so a saved parameters file is portable.
 
 To add a sample:
 1. Put its CIF file in this folder (e.g. `NaCl.cif`), or use a McStas built-in reflection list
@@ -13,13 +14,12 @@ To add a sample:
    are zero), `in_plane` (hkl in the horizontal plane, towards +x), `reflections` (the file name),
    and any other `Single_crystal` value it needs (e.g. `mosaic`), then `**params` last so a caller
    can change any of them.
-3. Add its name to `__all__` below, and to the imports and `__all__` of instrument/__init__.py, so
-   `from align_crystal.instrument import ...` finds it.
+3. Add its name to `__all__` below.
 4. Add it to the loop of `test_the_samples_are_crystals_placed_like_any_component`
-   (tests/instrument/test_samples.py).
+   (tests/samples/test_samples.py).
 """
 
-from ..components import Single_crystal
+from ..core.components import Single_crystal
 
 __all__ = ["aluminum", "la2ni7"]
 

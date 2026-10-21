@@ -1,6 +1,7 @@
 import pytest
 
-from align_crystal.instrument import SingleCrystalDiffractometer, Slit
+from align_crystal.core import Slit
+from align_crystal.instruments import SingleCrystalDiffractometer
 from align_crystal.io.dict_io import _components_from_dict, from_dict, merge, to_dict
 
 DATA = {

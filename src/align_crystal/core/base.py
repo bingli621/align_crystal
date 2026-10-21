@@ -17,10 +17,10 @@ and `update_params`, `components`, `instr_params`, `positions`, equality and the
 
 from dataclasses import asdict, fields, replace
 
-from align_crystal.instrument.components import Component
-from align_crystal.instrument.geometry import place_absolute
-from align_crystal.instrument.params import InstrParam
-from align_crystal.instrument.utils import format_value
+from .components import Component
+from .geometry import place_absolute
+from .params import InstrParam
+from .utils import format_value
 
 INSTRUMENTS: dict[str, type] = {}  # every subclass of Instrument by its class name
 

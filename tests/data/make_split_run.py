@@ -10,8 +10,9 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from align_crystal.instrument import SingleCrystalDiffractometer, la2ni7
+from align_crystal.instruments import SingleCrystalDiffractometer
 from align_crystal.mcstas.simulation import Simulation
+from align_crystal.samples import la2ni7
 
 HERE = Path(__file__).parent / "split_run"
 CRYSTAL = {"mosaic": 60, "at": [0, 0, 0], "relative": "gonio_phi"}

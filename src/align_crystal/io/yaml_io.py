@@ -3,21 +3,17 @@
 A parameters file holds the nested dict of dict_io.py (its layout is there), of any `Instrument`.
 `load(path)` lays a file over the default instrument of the class it names (`from_overrides`;
 every file names its `instrument:`), so a file need hold only what differs; `save(instrument,
-path)` writes a complete one. `params.yaml` next to this module is the default diffractometer
-saved (with an aluminium sample), as a reference of how a parameters file looks.
+path)` writes a complete one. Each instrument keeps its default saved, as a reference of how a
+parameters file looks (the diffractometer's: instruments/diffractometer/params.yaml, PARAMS_FILE).
 
-Files are written as params.yaml is laid out: in the order of the dict, with the innermost lists
+Files are written as those are laid out: in the order of the dict, with the innermost lists
 and dicts on one line (`at: [0, 0, 1.0]`, `ei: {value: 14.0, unit: meV, comment: incident energy}`).
 """
 
-from pathlib import Path
-
 import yaml
 
-from ..instrument import Instrument
+from ..core import Instrument
 from .dict_io import from_overrides, to_dict
-
-PARAMS_FILE = Path(__file__).parent / "params.yaml"  # the default diffractometer saved: a reference
 
 
 def read_yaml(path) -> dict:

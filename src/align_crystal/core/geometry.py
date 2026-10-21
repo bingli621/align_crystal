@@ -10,7 +10,7 @@ mccode-r.c): the matrix from the lab frame to the component's own frame.
 
 import numpy as np
 
-from align_crystal.instrument.utils import evaluate
+from .utils import evaluate
 
 
 def rotation(rx, ry, rz) -> np.ndarray:

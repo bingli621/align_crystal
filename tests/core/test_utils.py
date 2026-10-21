@@ -2,7 +2,7 @@ import math
 
 import pytest
 
-from align_crystal.instrument.utils import evaluate
+from align_crystal.core.utils import evaluate
 
 PARAMS = {"omega": 30.0, "chi": 5.0, "x": 0.5}  # floats, as the params are
 

@@ -137,7 +137,7 @@ class Simulation:
         inst = self._build(output_path, ncount=ncount, mpi=mpi, force_compile=True)
         self._set_instr_params(inst, instr_params)
         inst.run_to(
-            "sample_pos",
+            self.instrument.sample_pos.name,
             run_name="beam",
             comment=f"{ncount:g} neutrons",
             filename='"beam.mcpl"',
@@ -171,7 +171,7 @@ class Simulation:
             seed = int(np.random.SeedSequence().generate_state(1)[0] % 10**9)
 
         inst = self._build(output_path, mpi=None)
-        inst.run_from("sample_pos", filename=f'"{beam_file}"')
+        inst.run_from(self.instrument.sample_pos.name, filename=f'"{beam_file}"')
         # the instrument is the same for every angle; its parameters are written with the values
         # of the first one as defaults: McStas only records a parameter that has a default in the
         # output
@@ -212,7 +212,8 @@ class Simulation:
 
 if __name__ == "__main__":
     # Edit the settings below and run this file (e.g. with VS Code's ▶ button).
-    from align_crystal.instrument import Params, SingleCrystalDiffractometer, la2ni7
+    from align_crystal.instruments import Params, SingleCrystalDiffractometer
+    from align_crystal.samples import la2ni7
 
     # the sample, in the innermost goniometer arm; ei: incident energy, meV
     sample = la2ni7(mosaic=60, at=[0, 0, 0], relative="gonio_phi")

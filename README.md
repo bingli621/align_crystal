@@ -5,6 +5,16 @@
 Single-crystal diffractometer simulation (McStasScript) with a three-axis goniometer, and
 tools to read the McStas NeXus output (McStasToX, scippneutron) and convert to momentum transfer.
 
+The diffractometer seen from above (`d.plot_top_view("output/top_view.svg")`): the goniometer axes
+numbered outermost first, each with the way a positive angle turns it.
+
+![Top view of the diffractometer](output/top_view.svg)
+
+An omega scan over 132 points of La2Ni7, in momentum transfer, normalized
+(`scripts/plot_scan_Q.py`):
+
+![Normalized Q map of an omega scan](output/scan_Q_normalized_132pts.gif)
+
 ## Layout
 
 ```
@@ -28,7 +38,7 @@ src/align_crystal/   the library (installed)
                       components around the sample, each recording where it sits; its control
                       parameters Params, DEFAULT_PARAMS; instr_params: the wavelength of ei, and
                       the goniometer angles; params.yaml (PARAMS_FILE): its default saved, naming
-                      the components in beam order
+                      the components in beam order; plot_top_view: its top view (plot/)
   samples/          the ready-made samples aluminum, la2ni7, for any instrument (in __init__.py,
                     which says how to add one), with their CIF files (La2Ni7.cif)
   io/           files of the instrument (an adapter around the entities)
@@ -42,6 +52,10 @@ src/align_crystal/   the library (installed)
                       scan_from_sample
     nexus_io.py       read_scan: the NeXus output via mcstastox; merge_entries: single runs
                       into one scan file
+  plot/         pictures of any instrument (an adapter around the entities)
+    top_view.py       top_view_svg(instrument, path): seen from above, its rotation axes (from
+                      the components' `rotated`) numbered outermost first with the way each turns;
+                      SHAPES: how each type of component is drawn
   reduction/    to_Q, to_sample_frame, solid-angle normalization, find_peaks
 scripts/        build_instrument.py, plot_scan_2d.py, plot_scan_Q.py (gifs), print_peaks.py
 tests/
@@ -166,6 +180,7 @@ pixi run python scripts/build_instrument.py             # the .instr file, its d
 pixi run python scripts/plot_scan_2d.py                 # output/scan.gif
 pixi run python scripts/plot_scan_Q.py                  # output/scan_Q.gif
 pixi run python scripts/print_peaks.py                  # peak list of mcstas_output/latest
+pixi run python -c "from align_crystal.instruments import SingleCrystalDiffractometer as D; D().plot_top_view('output/top_view.svg')"
 pixi run pytest --cov=align_crystal --cov-report=term-missing   # tests + coverage
 pixi run pre-commit install                             # once: ruff format on every commit
 ```

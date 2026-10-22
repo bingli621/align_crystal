@@ -13,6 +13,7 @@ instrument from it.
 """
 
 from dataclasses import dataclass
+from pathlib import Path
 
 from align_crystal.core.base import Instrument
 from align_crystal.core.components import (
@@ -118,3 +119,11 @@ class SingleCrystalDiffractometer(Instrument):
             InstrParam("chi", p.chi, "deg", "goniometer rotation about -Z"),
             InstrParam("phi", p.phi, "deg", "goniometer rotation about +X"),
         ]
+
+    def plot_top_view(self, path: str | Path | None = None) -> str:
+        """Its top view, at its angles, as an SVG (plot/top_view.py: `top_view_svg`): the
+        goniometer axes numbered outermost first (1 omega, 2 chi, 3 phi), each with the way it
+        turns. Saved to `path` (None: not saved); returns the SVG text."""
+        from align_crystal.plot import top_view_svg  # only when drawn: importing does not need it
+
+        return top_view_svg(self, path)

@@ -63,7 +63,7 @@ def normalize_scan(
 
     The monitor is read from every scan entry of `folder`, unless `monitor_file` is given: for
     data simulated from a beam dump (`scan_from_sample`) the monitor and the source are only in the
-    file of the beam run (`run_to_sample`, `mcstas_output/beam/mccode.h5`). That one monitor reading then
+    file of the beam run (`run_to_sample`, `mcstas_output/<time>_run_to_sample/mccode.h5`). That one monitor reading then
     normalizes all angles, and the source position is rebuilt from the beam file (source ->
     sample vector) so that the incident beam direction is known. The parameters of the beam run
     fill in the ones the scan entries lack: a split run does not store the energy, since the

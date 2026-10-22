@@ -20,24 +20,9 @@ from pathlib import Path
 
 import numpy as np
 
-from mcstas_to_sqe import default_work_dir
 from mcstas_to_sqe.mcstas.builder import build_mcstas, default_input_dir
 from mcstas_to_sqe.mcstas.nexus_io import merge_entries
-
-
-def default_output_dir(work_dir=None):
-    """The folder of the simulation output (a folder per run), McStasScript's output_path:
-    `work_dir/mcstas_output` (None for `default_work_dir()`). Created by each run."""
-    return Path(work_dir or default_work_dir()) / "mcstas_output"
-
-
-def _clean_folder(path):
-    """Remove `path`, so a run starts from a clean folder, and create its parent folders: mcrun
-    does not create them."""
-    path = Path(path)
-    shutil.rmtree(path, ignore_errors=True)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    return path
+from mcstas_to_sqe.mcstas.run_folders import default_output_dir, latest_beam, run_folder
 
 
 def _run_points(inst, output_path, points, seed=None, n_jobs: int | None = None):
@@ -77,10 +62,13 @@ def _run_points(inst, output_path, points, seed=None, n_jobs: int | None = None)
 
 
 class Simulation:
-    """Runs of `instrument` (e.g. a `SingleCrystalDiffractometer`), each into a folder of
-    `output_dir`: `latest/` for `run` and `scan`, `beam/` for `run_to_sample`, `split/` for
-    `run_from_sample` and `scan_from_sample` (`name` gives another one). Every run builds the
-    instrument anew, into `input_dir`, so a change to it applies to the next run.
+    """Runs of `instrument` (e.g. a `SingleCrystalDiffractometer`), each into a new folder of
+    `output_dir`, named by its start time and mode: `<time>_run`, `<time>_scan_<variable>`,
+    `<time>_run_to_sample`, `<time>_run_from_sample` and `<time>_scan_<variable>_from_sample`,
+    with `<time>` e.g. `20261022-143005`. A `folder_name` gives the folder instead, which is then
+    replaced on every run. `run_folders.clean_runs` removes the older runs, never a
+    `run_to_sample` one. Every run builds the instrument anew, into `input_dir`, so a change to
+    it applies to the next run.
 
     Both folders are in `work_dir` (None for `default_work_dir()`: the current folder, or
     MCSTAS_TO_SQE_WORKDIR), fixed when the simulation is created: `mcstas_output/` and
@@ -92,15 +80,15 @@ class Simulation:
     into one `mccode.h5` with an entry per value (`entry1`, `entry2`, ... in their order).
 
     `beam_file` is the beam file the runs from the sample start from: the one of the last
-    `run_to_sample`, else `output_dir/beam/beam.mcpl.gz`, so a beam dumped in an earlier session
-    is found.
+    `run_to_sample`, else the newest `beam.mcpl.gz` in `output_dir`, so a beam dumped in an earlier
+    session is found (None if there is none).
     """
 
     def __init__(self, instrument, output_dir=None, input_dir=None, work_dir=None):
         self.instrument = instrument
         self.output_dir = Path(output_dir or default_output_dir(work_dir))
         self.input_dir = Path(input_dir or default_input_dir(instrument, work_dir))
-        self.beam_file = self.output_dir / "beam" / "beam.mcpl.gz"
+        self.beam_file = latest_beam(self.output_dir)
 
     def _build(self, **settings):
         """Return the McStasScript instrument, with NeXus output and the other run `settings`."""
@@ -112,14 +100,31 @@ class Simulation:
         """Return the McStasScript instrument from `sample_pos` on, starting from `beam_file`
         (None: the simulation's). Single process: with MPI the ranks would all repeat the same
         neutrons of the beam file."""
-        beam_file = Path(beam_file or self.beam_file).resolve()
+        beam_file = beam_file or self.beam_file
+        if beam_file is None:
+            raise FileNotFoundError(f"no beam file in {self.output_dir}: run run_to_sample first")
+        beam_file = Path(beam_file).resolve()
         inst = self._build(mpi=None, **settings)
         inst.run_from(self.instrument.sample_pos.name, filename=f'"{beam_file}"')
         return inst
 
-    def _values(self, instr_params):
+    def _get_params(self, instr_params):
         """The instrument parameter values (McStas name -> value) of a run: the instrument's,
-        with `instr_params` in place, one number each."""
+        with `instr_params` in place, one number each.
+
+        >>> from mcstas_to_sqe.instruments import Params, SingleCrystalDiffractometer
+        >>> sim = Simulation(SingleCrystalDiffractometer(params=Params(omega=30)))
+        >>> sim._get_params({})  # the instrument's
+        {'wavelength': 2.4172624717111, 'omega': 30, 'chi': 0.0, 'phi': 0.0}
+        >>> sim._get_params({"chi": 1})  # chi in place
+        {'wavelength': 2.4172624717111, 'omega': 30, 'chi': 1, 'phi': 0.0}
+        >>> sim._get_params({"omega": [1, 2]})
+        Traceback (most recent call last):
+        ValueError: ['omega']: one number each; scan a variable with a scan
+        >>> sim._get_params({"omgea": 3})
+        Traceback (most recent call last):
+        ValueError: no instrument parameter ['omgea'], only ['chi', 'omega', 'phi', 'wavelength']
+        """
         values = {p.name: p.value for p in self.instrument.instr_params}
         if unknown := sorted(instr_params.keys() - values.keys()):
             raise ValueError(f"no instrument parameter {unknown}, only {sorted(values)}")
@@ -129,19 +134,16 @@ class Simulation:
 
     def _points(self, variable, values, instr_params):
         """The instrument parameter values of each run of a scan of `variable` over `values`."""
-        fixed = self._values({**instr_params, variable: 0.0})
+        fixed = self._get_params({**instr_params, variable: 0.0})
         return [fixed | {variable: value} for value in np.asarray(values, dtype=float).tolist()]
 
-    def _start(self, name):
-        """The clean output folder `name` of a run."""
-        return _clean_folder(self.output_dir / name)
-
     def run(
-        self, name="latest", ncount=1e7, seed=None, mpi="auto", custom_flags=None, **instr_params
+        self, folder_name=None, ncount=1e7, seed=None, mpi="auto", custom_flags=None, **instr_params
     ):
         """Run source -> detector once, with `instr_params`. Output goes to
-        `output_dir/name/mccode.h5`, which is returned. `custom_flags` is passed to mcrun."""
-        output_path = self._start(name)
+        `output_dir/<time>_run/mccode.h5` (or `folder_name/`), which is returned. `custom_flags`
+        is passed to mcrun."""
+        output_path = run_folder(self.output_dir, folder_name, "run")
         inst = self._build(
             output_path=str(output_path),
             ncount=ncount,
@@ -150,7 +152,8 @@ class Simulation:
             seed=seed,
             custom_flags=custom_flags,
         )
-        inst.set_parameters(**self._values(instr_params))
+        params = self._get_params(instr_params)
+        inst.set_parameters(**params)
         inst.backengine()  # compiles in its input_dir
         return output_path / "mccode.h5"
 
@@ -158,7 +161,7 @@ class Simulation:
         self,
         variable,
         values,
-        name="latest",
+        folder_name=None,
         ncount=1e7,
         n_jobs=None,
         seed=None,
@@ -168,26 +171,28 @@ class Simulation:
         """Run source -> detector for every value of `variable` (e.g. "omega",
         np.linspace(-48, 83, 11)), the values in parallel (`n_jobs` single-process mcrun jobs at
         a time, default: all cores); the other instrument parameters are `instr_params`. Returns
-        `output_dir/name/mccode.h5`, an entry per value. Each value gets its own random seed
-        (`seed` + index), so the jobs do not repeat each other's random numbers."""
-        output_path = self._start(name)
+        `output_dir/<time>_scan_<variable>/mccode.h5` (or `folder_name/`), an entry per value.
+        Each value gets its own random seed (`seed` + index), so the jobs do not repeat each
+        other's random numbers."""
+        points = self._points(variable, values, instr_params)  # checks `variable` names a parameter
+        output_path = run_folder(self.output_dir, folder_name, f"scan_{variable}")
         inst = self._build(ncount=ncount, mpi=None, custom_flags=custom_flags)
-        points = self._points(variable, values, instr_params)
         return _run_points(inst, output_path, points, seed=seed, n_jobs=n_jobs)
 
-    def run_to_sample(self, name="beam", ncount=1e8, mpi="auto", **instr_params):
+    def run_to_sample(self, folder_name=None, ncount=1e8, mpi="auto", **instr_params):
         """Part 1 of a split run: simulate source -> slit -> incident monitor -> `sample_pos` and
         dump the beam to an MCPL file. Run it once with a large `ncount`. Returns the path of the
-        beam file (`output_dir/name/beam.mcpl.gz`), which becomes `beam_file`; the folder also has
-        `mccode.h5` with the incident monitor.
+        beam file (`output_dir/<time>_run_to_sample/beam.mcpl.gz`, or `folder_name/`), which becomes
+        `beam_file`; the folder also has `mccode.h5` with the incident monitor.
 
         The beam file only fits instruments with the same source and beam geometry, and the same
         wavelength, so make a new one if you change the instrument's ei, source, slit or monitor
         settings.
         """
-        output_path = self._start(name)
+        output_path = run_folder(self.output_dir, folder_name, "run_to_sample")
         inst = self._build(output_path=str(output_path), ncount=ncount, mpi=mpi, force_compile=True)
-        inst.set_parameters(**self._values(instr_params))
+        params = self._get_params(instr_params)
+        inst.set_parameters(**params)
         inst.run_to(
             self.instrument.sample_pos.name,
             run_name="beam",
@@ -198,30 +203,39 @@ class Simulation:
         self.beam_file = output_path / "beam.mcpl.gz"
         return self.beam_file
 
-    def run_from_sample(self, name="split", beam_file=None, seed=None, **instr_params):
+    def run_from_sample(self, folder_name=None, beam_file=None, seed=None, **instr_params):
         """Part 2 of a split run, any time later (even in another session): simulate
         `sample_pos` -> sample -> detector once, starting from `beam_file` (default: the
         simulation's), with `instr_params`; the wavelength must be the one of the beam file.
-        Returns `output_dir/name/mccode.h5`. The number of neutrons is the number in the beam
-        file."""
-        output_path = self._start(name)
+        Returns `output_dir/<time>_run_from_sample/mccode.h5` (or `folder_name/`). The number
+        of neutrons is the number in the beam file."""
+        output_path = run_folder(self.output_dir, folder_name, "run_from_sample")
         inst = self._build_from_sample(
             beam_file, output_path=str(output_path), force_compile=True, seed=seed
         )
-        inst.set_parameters(**self._values(instr_params))
+        params = self._get_params(instr_params)
+        inst.set_parameters(**params)
         inst.backengine()
         return output_path / "mccode.h5"
 
     def scan_from_sample(
-        self, variable, values, name="split", beam_file=None, n_jobs=None, seed=None, **instr_params
+        self,
+        variable,
+        values,
+        folder_name=None,
+        beam_file=None,
+        n_jobs=None,
+        seed=None,
+        **instr_params,
     ):
         """Part 2 of a split run for every value of `variable` (e.g. "omega", range(-48, 83)),
         all starting from `beam_file` (default: the simulation's), the values in parallel
         (`n_jobs` single-process mcrun jobs at a time, default: all cores); the other instrument
-        parameters are `instr_params`. Returns `output_dir/name/mccode.h5`, an entry per value.
-        Each value gets its own random seed (`seed` + index), so the jobs do not repeat each
+        parameters are `instr_params`. Returns
+        `output_dir/<time>_scan_<variable>_from_sample/mccode.h5` (or `folder_name/`), an entry per
+        value. Each value gets its own random seed (`seed` + index), so the jobs do not repeat each
         other's random numbers."""
-        output_path = self._start(name)
+        points = self._points(variable, values, instr_params)  # checks `variable` names a parameter
+        output_path = run_folder(self.output_dir, folder_name, f"scan_{variable}_from_sample")
         inst = self._build_from_sample(beam_file)
-        points = self._points(variable, values, instr_params)
         return _run_points(inst, output_path, points, seed=seed, n_jobs=n_jobs)

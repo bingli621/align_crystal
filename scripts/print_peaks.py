@@ -3,9 +3,9 @@ save it to a text file.
 
 In VS Code: run this file, or from a notebook/Interactive Window:
 
-    from mcstas_to_sqe.mcstas.simulation import default_output_dir
+    from mcstas_to_sqe.mcstas.run_folders import latest_run
     from print_peaks import print_peaks, save_peaks
-    peaks = print_peaks(default_output_dir() / "latest")
+    peaks = print_peaks(latest_run(pattern="*_scan_omega"))
     save_peaks(peaks, "output/peaks.txt")
 """
 
@@ -14,7 +14,7 @@ from pathlib import Path
 
 import numpy as np
 
-from mcstas_to_sqe.mcstas.simulation import default_output_dir
+from mcstas_to_sqe.mcstas.run_folders import default_output_dir, latest_run
 from mcstas_to_sqe.reduction import find_peaks
 
 OUTPUT_DIR = default_output_dir()  # the simulation results: mcstas_output/ of the work folder
@@ -42,9 +42,11 @@ def save_peaks(peaks, out=FIGURES / "peaks.txt"):
     return out
 
 
-def print_peaks(folder=OUTPUT_DIR / "latest", **kwargs):
-    """Print the peaks of a scan, smallest |Q| first. `kwargs` go to `find_peaks`.
-    Returns the list of peaks (use `save_peaks` to write them to a file)."""
+def print_peaks(folder=None, **kwargs):
+    """Print the peaks of a scan (`folder`, None: the newest scan in OUTPUT_DIR), smallest |Q|
+    first. `kwargs` go to `find_peaks`. Returns the list of peaks (use `save_peaks` to write them
+    to a file)."""
+    folder = folder or latest_run(OUTPUT_DIR, "*scan*")
     peaks = sorted(find_peaks(folder, **kwargs), key=lambda p: np.linalg.norm(p.q))
     print("\n".join(format_peaks(peaks)))
     return peaks

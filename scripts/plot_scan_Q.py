@@ -5,9 +5,9 @@ goniometer rotation, so the reciprocal lattice stays fixed while omega changes.
 
 In VS Code: run this file, or from a notebook/Interactive Window:
 
-    from mcstas_to_sqe.mcstas.simulation import default_output_dir
+    from mcstas_to_sqe.mcstas.run_folders import latest_run
     from plot_scan_Q import plot_scan_Q
-    plot_scan_Q(default_output_dir() / "latest", scan_par="omega", out="output/scan_Q.gif")
+    plot_scan_Q(latest_run(pattern="*_scan_omega"), scan_par="omega", out="output/scan_Q.gif")
 """
 
 from pathlib import Path
@@ -18,7 +18,7 @@ from matplotlib.animation import FuncAnimation, PillowWriter
 from matplotlib.colors import LogNorm
 
 from mcstas_to_sqe.mcstas.nexus_io import read_scan
-from mcstas_to_sqe.mcstas.simulation import default_output_dir
+from mcstas_to_sqe.mcstas.run_folders import default_output_dir, latest_run
 from mcstas_to_sqe.reduction import normalize_scan, run_wavelength, to_Q, to_sample_frame
 
 OUTPUT_DIR = default_output_dir()  # the simulation results: mcstas_output/ of the work folder
@@ -26,7 +26,7 @@ FIGURES = Path(__file__).resolve().parents[1] / "output"  # the repository's pic
 
 
 def plot_scan_Q(
-    folder=OUTPUT_DIR / "latest",
+    folder=None,
     scan_par="omega",
     out=FIGURES / "scan_Q.gif",
     bins=(200, 200),
@@ -37,15 +37,17 @@ def plot_scan_Q(
     wavelength=None,
     show=True,
 ):
-    """Saves a gif to `out` (None: don't save); returns the FuncAnimation.
+    """Plots the scan in `folder` (None: the newest scan in OUTPUT_DIR). Saves a gif to `out`
+    (None: don't save); returns the FuncAnimation.
 
     With `normalize`, the intensities are divided by the incident monitor and the pixel solid
     angle (see `normalize_scan`), in 1/sr. For data from `scan_from_sample` give the beam run's
-    `monitor_file` (`OUTPUT_DIR / "beam" / "mccode.h5"`). `wavelength` (a scipp scalar, e.g.
-    `reduction.wavelength(14)`): None takes the one each scan point stores.
+    `monitor_file` (`latest_run(OUTPUT_DIR, "*_run_to_sample") / "mccode.h5"`). `wavelength` (a
+    scipp scalar, e.g. `reduction.wavelength(14)`): None takes the one each scan point stores.
 
     With `accumulate`, frame i shows the sum of all scan points up to i (previous frames are kept).
     """
+    folder = folder or latest_run(OUTPUT_DIR, "*scan*")
     if normalize:
         scan = normalize_scan(folder, monitor_file=monitor_file)
         points = [
@@ -117,10 +119,10 @@ def plot_scan_Q(
 
 if __name__ == "__main__":
     # normalized (Qx, Qz) map of a scan (source -> detector), each point by its own monitor.
-    # For a scan_from_sample scan: folder=OUTPUT_DIR / "split",
-    # monitor_file=OUTPUT_DIR / "beam" / "mccode.h5" (the monitor of the beam run)
+    # For a scan_from_sample scan: folder=latest_run(OUTPUT_DIR, "*_scan_omega_from_sample"),
+    # monitor_file=latest_run(OUTPUT_DIR, "*_run_to_sample") / "mccode.h5" (the beam run's monitor)
     plot_scan_Q(
-        folder=OUTPUT_DIR / "latest",
+        folder=latest_run(OUTPUT_DIR, "*_scan_omega"),
         out=FIGURES / "scan_Q_normalized_132pts.gif",
         normalize=True,
     )

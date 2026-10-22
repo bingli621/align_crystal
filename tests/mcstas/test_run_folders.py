@@ -2,7 +2,13 @@ import re
 
 import pytest
 
-from mcstas_to_sqe.mcstas.run_folders import clean_runs, latest_run, list_runs, run_folder
+from mcstas_to_sqe.mcstas.run_folders import (
+    clean_runs,
+    latest_run,
+    list_runs,
+    monitor_file,
+    run_folder,
+)
 
 
 @pytest.mark.parametrize(
@@ -66,3 +72,18 @@ def test_clean_never_removes_a_run_to_sample_run(tmp_path, finished_run):
     scans = [finished_run(tmp_path / f"scan{n}", 10 + n) for n in range(2)]
     assert clean_runs(tmp_path, keep=0) == scans[::-1]
     assert sorted(tmp_path.iterdir()) == beams
+
+
+def test_a_run_from_the_sample_is_normalized_by_the_newest_beam_runs_monitor(
+    tmp_path, finished_run
+):
+    finished_run(tmp_path / "1_run_to_sample", 1, beam=True)
+    beam = finished_run(tmp_path / "2_run_to_sample", 2, beam=True)
+    scan = finished_run(tmp_path / "3_scan_omega_from_sample", 3)
+    assert monitor_file(scan) == beam / "mccode.h5"
+    assert monitor_file(finished_run(tmp_path / "4_scan_omega", 4)) is None  # its own monitor
+
+
+def test_a_run_from_the_sample_without_a_beam_run_raises(tmp_path, finished_run):
+    with pytest.raises(FileNotFoundError, match="run_to_sample"):
+        monitor_file(finished_run(tmp_path / "1_scan_omega_from_sample", 1))

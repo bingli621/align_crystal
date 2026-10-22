@@ -7,7 +7,8 @@ In VS Code: run this file, or from a notebook/Interactive Window:
 
     from mcstas_to_sqe.mcstas.run_folders import latest_run
     from plot_scan_Q import plot_scan_Q
-    plot_scan_Q(latest_run(pattern="*_scan_omega"), scan_par="omega", out="output/scan_Q.gif")
+    from work_dir import MCSTAS_DIR, OUTPUT_DIR
+    plot_scan_Q(latest_run(MCSTAS_DIR, "*_scan_omega"), scan_par="omega", out=OUTPUT_DIR / "scan_Q.gif")
 """
 
 from pathlib import Path
@@ -16,19 +17,18 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.animation import FuncAnimation, PillowWriter
 from matplotlib.colors import LogNorm
+from work_dir import MCSTAS_DIR, OUTPUT_DIR
 
+from mcstas_to_sqe.mcstas import run_folders
 from mcstas_to_sqe.mcstas.nexus_io import read_scan
-from mcstas_to_sqe.mcstas.run_folders import default_output_dir, latest_run
+from mcstas_to_sqe.mcstas.run_folders import latest_run
 from mcstas_to_sqe.reduction import normalize_scan, run_wavelength, to_Q, to_sample_frame
-
-OUTPUT_DIR = default_output_dir()  # the simulation results: mcstas_output/ of the work folder
-FIGURES = Path(__file__).resolve().parents[1] / "output"  # the repository's pictures
 
 
 def plot_scan_Q(
     folder=None,
     scan_par="omega",
-    out=FIGURES / "scan_Q.gif",
+    out=OUTPUT_DIR / "scan_Q.gif",
     bins=(200, 200),
     fps=3,
     accumulate=True,
@@ -37,18 +37,19 @@ def plot_scan_Q(
     wavelength=None,
     show=True,
 ):
-    """Plots the scan in `folder` (None: the newest scan in OUTPUT_DIR). Saves a gif to `out`
+    """Plots the scan in `folder` (None: the newest scan in MCSTAS_DIR). Saves a gif to `out`
     (None: don't save); returns the FuncAnimation.
 
     With `normalize`, the intensities are divided by the incident monitor and the pixel solid
-    angle (see `normalize_scan`), in 1/sr. For data from `scan_from_sample` give the beam run's
-    `monitor_file` (`latest_run(OUTPUT_DIR, "*_run_to_sample") / "mccode.h5"`). `wavelength` (a
+    angle (see `normalize_scan`), in 1/sr. `monitor_file` None takes the scan's own monitor, or
+    for data from `scan_from_sample` the beam run's (`run_folders.monitor_file`). `wavelength` (a
     scipp scalar, e.g. `reduction.wavelength(14)`): None takes the one each scan point stores.
 
     With `accumulate`, frame i shows the sum of all scan points up to i (previous frames are kept).
     """
-    folder = folder or latest_run(OUTPUT_DIR, "*scan*")
+    folder = folder or latest_run(MCSTAS_DIR, "*scan*")
     if normalize:
+        monitor_file = monitor_file or run_folders.monitor_file(folder)
         scan = normalize_scan(folder, monitor_file=monitor_file)
         points = [
             ({k: v.value for k, v in g["parameters"].items()}, g["events"].bins.sum())
@@ -118,11 +119,10 @@ def plot_scan_Q(
 
 
 if __name__ == "__main__":
-    # normalized (Qx, Qz) map of a scan (source -> detector), each point by its own monitor.
-    # For a scan_from_sample scan: folder=latest_run(OUTPUT_DIR, "*_scan_omega_from_sample"),
-    # monitor_file=latest_run(OUTPUT_DIR, "*_run_to_sample") / "mccode.h5" (the beam run's monitor)
+    # normalized (Qx, Qz) map of the newest omega scan: a scan (source -> detector) by each
+    # point's own monitor, a scan_from_sample scan by the monitor of the beam run it started from
     plot_scan_Q(
-        folder=latest_run(OUTPUT_DIR, "*_scan_omega"),
-        out=FIGURES / "scan_Q_normalized_132pts.gif",
+        folder=latest_run(MCSTAS_DIR, "*_scan_omega*"),
+        out=OUTPUT_DIR / "scan_Q_normalized_132pts.gif",
         normalize=True,
     )

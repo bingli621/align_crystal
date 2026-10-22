@@ -103,6 +103,19 @@ def latest_beam(output_dir=None):
     return next((beam for beam in beams if beam.is_file()), None)
 
 
+def monitor_file(folder, output_dir=None):
+    """The file with the incident monitor that normalizes the run in `folder`: for a run from
+    the sample (a name ending in `_from_sample`), the `mccode.h5` of the newest `run_to_sample`
+    in `output_dir` (None for `folder`'s parent), as its own file has no monitor; else None, as
+    the run has its own monitor.
+
+    Raises FileNotFoundError if a run from the sample finds no `run_to_sample`."""
+    folder = Path(folder)
+    if not folder.name.endswith("_from_sample"):
+        return None
+    return latest_run(output_dir or folder.parent, "*_run_to_sample") / "mccode.h5"
+
+
 def clean_runs(output_dir=None, keep=5):
     """Remove all but the `keep` newest finished runs of `output_dir` (None for
     `default_output_dir()`), and return the removed folders.

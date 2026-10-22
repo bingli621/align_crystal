@@ -1,5 +1,6 @@
 """Simulate the single-crystal diffractometer (La2Ni7 sample) of build_instrument.py (edit MODE:
-which `Simulation` method runs), writing into a new run folder of mcstas_output/.
+which `Simulation` method runs), writing into a new run folder of mcstas_output/ of the work
+folder (work_dir.py).
 
 In VS Code: run this file, or from a notebook/Interactive Window:
 
@@ -11,6 +12,7 @@ In VS Code: run this file, or from a notebook/Interactive Window:
 
 import numpy as np
 from build_instrument import create_instrument
+from work_dir import MCSTAS_DIR, WORK_DIR  # noqa: F401 (MCSTAS_DIR: see __main__)
 
 from mcstas_to_sqe.mcstas.run_folders import clean_runs  # noqa: F401 (see __main__)
 from mcstas_to_sqe.mcstas.simulation import Simulation
@@ -23,7 +25,7 @@ MODE = "scan_from_sample"
 def run_simulation(instrument, mode=MODE):
     """Simulate `instrument` (the diffractometer) with the `Simulation` method `mode`, printing
     and returning the file it wrote."""
-    sim = Simulation(instrument)
+    sim = Simulation(instrument, work_dir=WORK_DIR)
     if mode == "run":
         h5_file = sim.run(ncount=1e6, omega=30.0, chi=-5.893, phi=0.0)
     elif mode == "scan":
@@ -43,4 +45,4 @@ def run_simulation(instrument, mode=MODE):
 if __name__ == "__main__":
     scd = create_instrument()
     run_simulation(scd)
-    # clean_runs(keep=5)  # remove all but the 5 newest runs (never a run_to_sample run)
+    # clean_runs(MCSTAS_DIR, keep=5)  # remove all but the 5 newest runs (never a run_to_sample run)

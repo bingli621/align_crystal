@@ -4,7 +4,8 @@ In VS Code: run this file, or from a notebook/Interactive Window:
 
     from mcstas_to_sqe.mcstas.run_folders import latest_run
     from plot_scan_2d import plot_scan_2d
-    plot_scan_2d(latest_run(pattern="*_scan_omega"), scan_par="omega", out="output/scan.gif")
+    from work_dir import MCSTAS_DIR, OUTPUT_DIR
+    plot_scan_2d(latest_run(MCSTAS_DIR, "*_scan_omega"), scan_par="omega", out=OUTPUT_DIR / "scan.gif")
 """
 
 from pathlib import Path
@@ -13,25 +14,23 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.animation import FuncAnimation, PillowWriter
 from matplotlib.colors import LogNorm
+from work_dir import MCSTAS_DIR, OUTPUT_DIR
 
 from mcstas_to_sqe.mcstas.nexus_io import read_scan
-from mcstas_to_sqe.mcstas.run_folders import default_output_dir, latest_run
-
-OUTPUT_DIR = default_output_dir()  # the simulation results: mcstas_output/ of the work folder
-FIGURES = Path(__file__).resolve().parents[1] / "output"  # the repository's pictures
+from mcstas_to_sqe.mcstas.run_folders import latest_run
 
 
 def plot_scan_2d(
     folder=None,
     scan_par="omega",
-    out=FIGURES / "scan.gif",
+    out=OUTPUT_DIR / "scan.gif",
     bins=(1200, 50),
     fps=3,
     show=True,
 ):
-    """One frame per scan point of `folder` (None: the newest scan in OUTPUT_DIR), the scan angle
+    """One frame per scan point of `folder` (None: the newest scan in MCSTAS_DIR), the scan angle
     in the title. Saves a gif to `out` (None: don't save); returns the FuncAnimation."""
-    points = read_scan(folder or latest_run(OUTPUT_DIR, "*scan*"))
+    points = read_scan(folder or latest_run(MCSTAS_DIR, "*scan*"))
     hists = [
         np.histogram2d(
             ev.coords["gamma"].values,

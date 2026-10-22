@@ -53,16 +53,17 @@ src/mcstas_to_sqe/   the library (installed)
     nexus_io.py       read_scan: the NeXus output via mcstastox; merge_entries: single runs
                       into one scan file
     run_folders.py    the run folders: default_output_dir, run_folder (by time and mode, or a
-                      safe folder_name), list_runs, latest_run, latest_beam, clean_runs
+                      safe folder_name), list_runs, latest_run, latest_beam, monitor_file, clean_runs
   plot/         pictures of any instrument (an adapter around the entities)
     top_view.py       top_view_svg(instrument, path): seen from above, its rotation axes (from
                       the components' `rotated`) numbered outermost first with the way each turns;
                       SHAPES: how each type of component is drawn
   reduction/    to_Q, to_sample_frame, solid-angle normalization, find_peaks
-scripts/        build_instrument.py, run_mcstas.py, plot_scan_2d.py, plot_scan_Q.py (gifs), print_peaks.py
+scripts/        work_dir.py (their folders), build_instrument.py, run_mcstas.py, plot_scan_2d.py, plot_scan_Q.py (gifs), print_peaks.py
 tests/
 mcstas_input/   generated McStas files, a folder per instrument: .instr, .c, binary (git-ignored)
 mcstas_output/  simulation results (git-ignored)
+output/         figures and peak lists made from the results
 ```
 
 Dependencies point inwards (clean architecture): `core` holds the entities any instrument
@@ -190,11 +191,13 @@ pixi run pre-commit install                             # once: ruff format on e
 
 McStas builds in `mcstas_input/<instrument name>/` and results go to `mcstas_output/`, a folder
 per run named by its start time and mode (`20261022-143005_scan_omega/`, `..._run_to_sample/`,
-`..._scan_omega_from_sample/`; `folder_name="..."` picks a fixed one instead, replaced on each run), both in the
-current folder (the repository when run as above), so they are there to look at.
+`..._scan_omega_from_sample/`; `folder_name="..."` picks a fixed one instead, replaced on each run), and the
+figures and peak lists to `output/`, all in the work folder, so they are there to look at. For the library that
+is the current folder (`default_work_dir()`; `default_figures_dir()` for `output/`); the scripts always use the
+repository, wherever they run from (`scripts/work_dir.py`: an Interactive Window starts in `scripts/`).
 `list_runs()` lists the runs, newest first, `latest_run(pattern="*_scan_omega")` finds the
 newest one and `clean_runs(keep=5)` removes all but the newest five (never a `run_to_sample` run: delete those by hand), all in `mcstas.run_folders`. `Simulation(d, work_dir=...)` or the environment variable
-`MCSTAS_TO_SQE_WORKDIR` moves both, and `Simulation(d, output_dir=..., input_dir=...)` either. A split run
+`MCSTAS_TO_SQE_WORKDIR` moves all three, for the library and the scripts, and `Simulation(d, output_dir=..., input_dir=...)` either. A split run
 simulates source to sample once (`Simulation.run_to_sample`) and then the crystal for one angle (`run_from_sample`) or many in
 parallel (`scan_from_sample`), which can be normalized with the beam run's incident monitor.
 

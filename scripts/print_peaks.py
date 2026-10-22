@@ -5,20 +5,19 @@ In VS Code: run this file, or from a notebook/Interactive Window:
 
     from mcstas_to_sqe.mcstas.run_folders import latest_run
     from print_peaks import print_peaks, save_peaks
-    peaks = print_peaks(latest_run(pattern="*_scan_omega"))
-    save_peaks(peaks, "output/peaks.txt")
+    from work_dir import MCSTAS_DIR, OUTPUT_DIR
+    peaks = print_peaks(latest_run(MCSTAS_DIR, "*_scan_omega"))
+    save_peaks(peaks, OUTPUT_DIR / "peaks.txt")
 """
 
 import sys
 from pathlib import Path
 
 import numpy as np
+from work_dir import MCSTAS_DIR, OUTPUT_DIR
 
-from mcstas_to_sqe.mcstas.run_folders import default_output_dir, latest_run
+from mcstas_to_sqe.mcstas.run_folders import latest_run, monitor_file
 from mcstas_to_sqe.reduction import find_peaks
-
-OUTPUT_DIR = default_output_dir()  # the simulation results: mcstas_output/ of the work folder
-FIGURES = Path(__file__).resolve().parents[1] / "output"  # the repository's pictures
 
 
 def format_peaks(peaks):
@@ -34,7 +33,7 @@ def format_peaks(peaks):
     return lines
 
 
-def save_peaks(peaks, out=FIGURES / "peaks.txt"):
+def save_peaks(peaks, out=OUTPUT_DIR / "peaks.txt"):
     """Write the peak table to the text file `out`; returns the path."""
     out = Path(out)
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -43,10 +42,12 @@ def save_peaks(peaks, out=FIGURES / "peaks.txt"):
 
 
 def print_peaks(folder=None, **kwargs):
-    """Print the peaks of a scan (`folder`, None: the newest scan in OUTPUT_DIR), smallest |Q|
-    first. `kwargs` go to `find_peaks`. Returns the list of peaks (use `save_peaks` to write them
-    to a file)."""
-    folder = folder or latest_run(OUTPUT_DIR, "*scan*")
+    """Print the peaks of a scan (`folder`, None: the newest scan in MCSTAS_DIR), smallest |Q|
+    first. `kwargs` go to `find_peaks`; a `scan_from_sample` scan without a `monitor_file` gets
+    the beam run's (`run_folders.monitor_file`). Returns the list of peaks (use `save_peaks` to
+    write them to a file)."""
+    folder = folder or latest_run(MCSTAS_DIR, "*scan*")
+    kwargs.setdefault("monitor_file", monitor_file(folder))
     peaks = sorted(find_peaks(folder, **kwargs), key=lambda p: np.linalg.norm(p.q))
     print("\n".join(format_peaks(peaks)))
     return peaks

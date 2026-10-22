@@ -1,5 +1,6 @@
 """Build the McStas instrument of the single-crystal diffractometer (La2Ni7 sample), show it,
-and write its .instr file to mcstas_input/<instrument name>/. run_mcstas.py simulates it.
+and write its .instr file to mcstas_input/<instrument name>/ of the work folder (work_dir.py).
+run_mcstas.py simulates it.
 
 In VS Code: run this file, or from a notebook/Interactive Window:
 
@@ -9,8 +10,10 @@ In VS Code: run this file, or from a notebook/Interactive Window:
     inst.show_diagram()
 """
 
+from work_dir import WORK_DIR
+
 from mcstas_to_sqe.instruments import Params, SingleCrystalDiffractometer
-from mcstas_to_sqe.mcstas.builder import build_mcstas
+from mcstas_to_sqe.mcstas.builder import build_mcstas, default_input_dir
 from mcstas_to_sqe.samples import la2ni7
 
 
@@ -33,7 +36,9 @@ def create_mcstas(instrument, input_path=None, plot=True):
     """Return the McStasScript instrument of `instrument`, its .instr file written to
     `input_path` (None for mcstas_input/<instrument name>/). Print its parameters, components and instrument
     file, and with `plot` draw its diagram."""
-    inst = build_mcstas(instrument, input_path=input_path)
+    inst = build_mcstas(
+        instrument, input_path=input_path or default_input_dir(instrument, WORK_DIR)
+    )
     inst.write_full_instrument()  # show_instrument_file reads the file on disk: write it first
     inst.show_parameters()
     inst.show_components()

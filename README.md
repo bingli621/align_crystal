@@ -59,7 +59,7 @@ src/mcstas_to_sqe/   the library (installed)
                       the components' `rotated`) numbered outermost first with the way each turns;
                       SHAPES: how each type of component is drawn
   reduction/    to_Q, to_sample_frame, solid-angle normalization, find_peaks
-scripts/        build_instrument.py, plot_scan_2d.py, plot_scan_Q.py (gifs), print_peaks.py
+scripts/        build_instrument.py, run_mcstas.py, plot_scan_2d.py, plot_scan_Q.py (gifs), print_peaks.py
 tests/
 mcstas_input/   generated McStas files, a folder per instrument: .instr, .c, binary (git-ignored)
 mcstas_output/  simulation results (git-ignored)
@@ -178,7 +178,8 @@ save(d, "copy.yaml")
 ## Use
 
 ```bash
-pixi run python scripts/build_instrument.py             # the .instr file, its diagram; edit MODE: a scan, or beam dump + scan from the beam
+pixi run python scripts/build_instrument.py             # the .instr file, its diagram
+pixi run python scripts/run_mcstas.py                   # simulate it; edit MODE: a run, a scan, or beam dump + scan from the beam
 pixi run python scripts/plot_scan_2d.py                 # output/scan.gif
 pixi run python scripts/plot_scan_Q.py                  # output/scan_Q.gif
 pixi run python scripts/print_peaks.py                  # peak list of the newest scan

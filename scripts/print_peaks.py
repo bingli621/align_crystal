@@ -3,11 +3,10 @@ save it to a text file.
 
 In VS Code: run this file, or from a notebook/Interactive Window:
 
-    from mcstas_to_sqe import PROJECT_ROOT
-    from mcstas_to_sqe.mcstas.simulation import OUTPUT_DIR
+    from mcstas_to_sqe.mcstas.simulation import default_output_dir
     from print_peaks import print_peaks, save_peaks
-    peaks = print_peaks(OUTPUT_DIR / "latest")
-    save_peaks(peaks, PROJECT_ROOT / "output" / "peaks.txt")
+    peaks = print_peaks(default_output_dir() / "latest")
+    save_peaks(peaks, "output/peaks.txt")
 """
 
 import sys
@@ -15,9 +14,11 @@ from pathlib import Path
 
 import numpy as np
 
-from mcstas_to_sqe import PROJECT_ROOT
-from mcstas_to_sqe.mcstas.simulation import OUTPUT_DIR
+from mcstas_to_sqe.mcstas.simulation import default_output_dir
 from mcstas_to_sqe.reduction import find_peaks
+
+OUTPUT_DIR = default_output_dir()  # the simulation results: mcstas_output/ of the work folder
+FIGURES = Path(__file__).resolve().parents[1] / "output"  # the repository's pictures
 
 
 def format_peaks(peaks):
@@ -33,7 +34,7 @@ def format_peaks(peaks):
     return lines
 
 
-def save_peaks(peaks, out=PROJECT_ROOT / "output" / "peaks.txt"):
+def save_peaks(peaks, out=FIGURES / "peaks.txt"):
     """Write the peak table to the text file `out`; returns the path."""
     out = Path(out)
     out.parent.mkdir(parents=True, exist_ok=True)

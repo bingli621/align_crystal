@@ -5,7 +5,7 @@ import pytest
 
 from mcstas_to_sqe.core import Instrument, Monitor, Progress_bar, Slit
 from mcstas_to_sqe.instruments import SingleCrystalDiffractometer
-from mcstas_to_sqe.mcstas.builder import build_mcstas
+from mcstas_to_sqe.mcstas.builder import build_mcstas, default_input_dir
 from mcstas_to_sqe.samples import la2ni7
 
 
@@ -22,6 +22,23 @@ def test_the_input_folder_is_created(tmp_path, diffractometer):
     folder = tmp_path / "new" / "in"
     inst = build_mcstas(diffractometer(), input_path=folder)
     assert folder.is_dir() and Path(inst.input_path) == folder
+
+
+def test_by_default_the_input_folder_is_per_instrument_in_the_current_folder(
+    tmp_path, monkeypatch, diffractometer
+):
+    monkeypatch.delenv("MCSTAS_TO_SQE_WORKDIR", raising=False)
+    monkeypatch.chdir(tmp_path)
+    d = diffractometer()
+    inst = build_mcstas(d)
+    assert Path(inst.input_path) == tmp_path / "mcstas_input" / d.name
+    assert default_input_dir(d, "elsewhere") == Path("elsewhere") / "mcstas_input" / d.name
+
+
+def test_the_environment_variable_moves_the_input_folder(tmp_path, monkeypatch, diffractometer):
+    monkeypatch.setenv("MCSTAS_TO_SQE_WORKDIR", str(tmp_path))
+    d = diffractometer()
+    assert default_input_dir(d) == tmp_path / "mcstas_input" / d.name
 
 
 def test_the_parameters_and_the_goniometer_rotations(tmp_path, diffractometer):

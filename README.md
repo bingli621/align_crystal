@@ -59,7 +59,7 @@ src/mcstas_to_sqe/   the library (installed)
   reduction/    to_Q, to_sample_frame, solid-angle normalization, find_peaks
 scripts/        build_instrument.py, plot_scan_2d.py, plot_scan_Q.py (gifs), print_peaks.py
 tests/
-mcstas_input/   generated McStas files: .instr, .c, compiled binary (git-ignored)
+mcstas_input/   generated McStas files, a folder per instrument: .instr, .c, binary (git-ignored)
 mcstas_output/  simulation results (git-ignored)
 ```
 
@@ -185,9 +185,10 @@ pixi run pytest --cov=mcstas_to_sqe --cov-report=term-missing   # tests + covera
 pixi run pre-commit install                             # once: ruff format on every commit
 ```
 
-McStas builds in `mcstas_input/` and results go to `mcstas_output/` (`latest/`, and `beam/` +
-`split/` for the split run); `Simulation(d, output_dir=..., input_dir=...)` takes others, and the
-environment variable `MCSTAS_TO_SQE_ROOT` moves both. A split run
+McStas builds in `mcstas_input/<instrument name>/` and results go to `mcstas_output/` (`latest/`,
+and `beam/` + `split/` for the split run), both in the current folder (the repository when run as
+above), so they are there to look at. `Simulation(d, work_dir=...)` or the environment variable
+`MCSTAS_TO_SQE_WORKDIR` moves both, and `Simulation(d, output_dir=..., input_dir=...)` either. A split run
 simulates source to sample once (`Simulation.run_to_sample`) and then the crystal for one angle (`run_from_sample`) or many in
 parallel (`scan_from_sample`), which can be normalized with the beam run's incident monitor.
 

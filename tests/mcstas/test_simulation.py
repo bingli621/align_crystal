@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 
 from mcstas_to_sqe.instruments import Params, SingleCrystalDiffractometer
@@ -25,3 +27,16 @@ def test_a_run_takes_one_number_per_known_parameter(instr_params):
 def test_a_scan_of_an_unknown_variable_raises():
     with pytest.raises(ValueError, match="omgea"):
         Simulation(SingleCrystalDiffractometer())._points("omgea", [1, 2], {})
+
+
+def test_the_folders_are_in_the_work_folder(tmp_path, monkeypatch):
+    monkeypatch.delenv("MCSTAS_TO_SQE_WORKDIR", raising=False)
+    monkeypatch.chdir(tmp_path)
+    d = SingleCrystalDiffractometer()
+    sim = Simulation(d)
+    assert sim.output_dir == tmp_path / "mcstas_output"
+    assert sim.input_dir == tmp_path / "mcstas_input" / d.name
+    sim = Simulation(d, work_dir=tmp_path / "w", output_dir="out")
+    assert (
+        sim.output_dir == Path("out") and sim.input_dir == tmp_path / "w" / "mcstas_input" / d.name
+    )

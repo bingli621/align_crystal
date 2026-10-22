@@ -15,11 +15,14 @@ from pathlib import Path
 
 from mcstasscript.interface import instr
 
-from mcstas_to_sqe import PROJECT_ROOT
+from mcstas_to_sqe import default_work_dir
 
-# McStas-generated files (.instr, .c, compiled binary), McStasScript's input_path: mcrun runs
-# here. Created by `build_mcstas`.
-INPUT_DIR = PROJECT_ROOT / "mcstas_input"
+
+def default_input_dir(instrument, work_dir=None):
+    """The folder of the McStas-generated files (.instr, .c, compiled binary) of `instrument`,
+    McStasScript's input_path, where mcrun runs: `work_dir/mcstas_input/<instrument name>` (None
+    for `default_work_dir()`), a folder per instrument so they do not overwrite each other."""
+    return Path(work_dir or default_work_dir()) / "mcstas_input" / instrument.name
 
 
 def _set_parameters(mcstas_comp, component, instrument):
@@ -51,9 +54,10 @@ def _set_parameters(mcstas_comp, component, instrument):
 
 def build_mcstas(instrument, input_path: str | Path | None = None):
     """Return a McStasScript instrument of `instrument`: its instrument parameters and its
-    components. Its files go into `input_path` (None for `INPUT_DIR`), created if not there yet."""
+    components. Its files go into `input_path` (None for `default_input_dir`), created if not
+    there yet."""
 
-    input_path = Path(input_path or INPUT_DIR)
+    input_path = Path(input_path or default_input_dir(instrument))
     input_path.mkdir(parents=True, exist_ok=True)
 
     mcstas_instr = instr.McStas_instr(instrument.name, input_path=str(input_path))

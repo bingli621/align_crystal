@@ -5,10 +5,9 @@ goniometer rotation, so the reciprocal lattice stays fixed while omega changes.
 
 In VS Code: run this file, or from a notebook/Interactive Window:
 
-    from mcstas_to_sqe import PROJECT_ROOT
-    from mcstas_to_sqe.mcstas.simulation import OUTPUT_DIR
+    from mcstas_to_sqe.mcstas.simulation import default_output_dir
     from plot_scan_Q import plot_scan_Q
-    plot_scan_Q(OUTPUT_DIR / "latest", scan_par="omega", out=PROJECT_ROOT / "output" / "scan_Q.gif")
+    plot_scan_Q(default_output_dir() / "latest", scan_par="omega", out="output/scan_Q.gif")
 """
 
 from pathlib import Path
@@ -18,16 +17,18 @@ import numpy as np
 from matplotlib.animation import FuncAnimation, PillowWriter
 from matplotlib.colors import LogNorm
 
-from mcstas_to_sqe import PROJECT_ROOT
 from mcstas_to_sqe.mcstas.nexus_io import read_scan
-from mcstas_to_sqe.mcstas.simulation import OUTPUT_DIR
+from mcstas_to_sqe.mcstas.simulation import default_output_dir
 from mcstas_to_sqe.reduction import normalize_scan, run_wavelength, to_Q, to_sample_frame
+
+OUTPUT_DIR = default_output_dir()  # the simulation results: mcstas_output/ of the work folder
+FIGURES = Path(__file__).resolve().parents[1] / "output"  # the repository's pictures
 
 
 def plot_scan_Q(
     folder=OUTPUT_DIR / "latest",
     scan_par="omega",
-    out=PROJECT_ROOT / "output" / "scan_Q.gif",
+    out=FIGURES / "scan_Q.gif",
     bins=(200, 200),
     fps=3,
     accumulate=True,
@@ -120,6 +121,6 @@ if __name__ == "__main__":
     # monitor_file=OUTPUT_DIR / "beam" / "mccode.h5" (the monitor of the beam run)
     plot_scan_Q(
         folder=OUTPUT_DIR / "latest",
-        out=PROJECT_ROOT / "output" / "scan_Q_normalized_132pts.gif",
+        out=FIGURES / "scan_Q_normalized_132pts.gif",
         normalize=True,
     )

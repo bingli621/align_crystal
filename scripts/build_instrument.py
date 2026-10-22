@@ -1,5 +1,5 @@
 """Build the McStas instrument of the single-crystal diffractometer (La2Ni7 sample), show it,
-write its .instr file to mcstas_input/, and simulate it (edit MODE: which `Simulation` method runs).
+write its .instr file to mcstas_input/<instrument name>/, and simulate it (edit MODE: which `Simulation` method runs).
 
 In VS Code: run this file, or from a notebook/Interactive Window:
 
@@ -35,7 +35,7 @@ def create_instrument():
 
 def create_mcstas(instrument, input_path=None, plot=True):
     """Return the McStasScript instrument of `instrument`, its .instr file written to
-    `input_path` (None for mcstas_input/). Print its parameters, components and instrument
+    `input_path` (None for mcstas_input/<instrument name>/). Print its parameters, components and instrument
     file, and with `plot` draw its diagram."""
     inst = build_mcstas(instrument, input_path=input_path)
     inst.write_full_instrument()  # show_instrument_file reads the file on disk: write it first

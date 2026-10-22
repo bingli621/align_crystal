@@ -20,12 +20,15 @@ from pathlib import Path
 
 import numpy as np
 
-from mcstas_to_sqe import PROJECT_ROOT
-from mcstas_to_sqe.mcstas.builder import build_mcstas
+from mcstas_to_sqe import default_work_dir
+from mcstas_to_sqe.mcstas.builder import build_mcstas, default_input_dir
 from mcstas_to_sqe.mcstas.nexus_io import merge_entries
 
-# simulation output (a folder per run), McStasScript's output_path. Created by each run.
-OUTPUT_DIR = PROJECT_ROOT / "mcstas_output"
+
+def default_output_dir(work_dir=None):
+    """The folder of the simulation output (a folder per run), McStasScript's output_path:
+    `work_dir/mcstas_output` (None for `default_work_dir()`). Created by each run."""
+    return Path(work_dir or default_work_dir()) / "mcstas_output"
 
 
 def _clean_folder(path):
@@ -77,8 +80,11 @@ class Simulation:
     """Runs of `instrument` (e.g. a `SingleCrystalDiffractometer`), each into a folder of
     `output_dir`: `latest/` for `run` and `scan`, `beam/` for `run_to_sample`, `split/` for
     `run_from_sample` and `scan_from_sample` (`name` gives another one). Every run builds the
-    instrument anew, into `input_dir` (None for the builder's `INPUT_DIR`), so a change to it
-    applies to the next run.
+    instrument anew, into `input_dir`, so a change to it applies to the next run.
+
+    Both folders are in `work_dir` (None for `default_work_dir()`: the current folder, or
+    MCSTAS_TO_SQE_WORKDIR), fixed when the simulation is created: `mcstas_output/` and
+    `mcstas_input/<instrument name>/`. `output_dir` and `input_dir` put either elsewhere.
 
     `instr_params` of a run are its instrument parameters, by McStas name: omega, chi, phi (deg;
     the instrument's unless given), and the `wavelength` (angstrom; the one of the instrument's
@@ -90,10 +96,10 @@ class Simulation:
     is found.
     """
 
-    def __init__(self, instrument, output_dir=OUTPUT_DIR, input_dir=None):
+    def __init__(self, instrument, output_dir=None, input_dir=None, work_dir=None):
         self.instrument = instrument
-        self.output_dir = Path(output_dir)
-        self.input_dir = input_dir
+        self.output_dir = Path(output_dir or default_output_dir(work_dir))
+        self.input_dir = Path(input_dir or default_input_dir(instrument, work_dir))
         self.beam_file = self.output_dir / "beam" / "beam.mcpl.gz"
 
     def _build(self, **settings):

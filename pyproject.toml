@@ -3,15 +3,15 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "align_crystal"
+name = "mcstas_to_sqe"
 version = "0.1.0"
-description = "align_crystal"
+description = "mcstas_to_sqe"
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [{ name = "Bing Li", email = "bing.li@ess.eu" }]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/align_crystal"]
+packages = ["src/mcstas_to_sqe"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

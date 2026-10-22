@@ -20,9 +20,9 @@ from pathlib import Path
 
 import numpy as np
 
-from align_crystal import PROJECT_ROOT
-from align_crystal.mcstas.builder import build_mcstas
-from align_crystal.mcstas.nexus_io import merge_entries
+from mcstas_to_sqe import PROJECT_ROOT
+from mcstas_to_sqe.mcstas.builder import build_mcstas
+from mcstas_to_sqe.mcstas.nexus_io import merge_entries
 
 # simulation output (a folder per run), McStasScript's output_path. Created by each run.
 OUTPUT_DIR = PROJECT_ROOT / "mcstas_output"

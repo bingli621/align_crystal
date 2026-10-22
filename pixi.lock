@@ -7166,7 +7166,7 @@ packages:
   size: 433687
   timestamp: 1786599629846
 - pypi: ./
-  name: align-crystal
+  name: mcstas-to-sqe
   requires_python: '>=3.10'
 - pypi: git+https://github.com/mads-bertelsen-agentic/McStasToX?rev=entry_choice#926db4e8d83ed13d884bb5865ff4993d2f597263
   name: mcstastox

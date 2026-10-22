@@ -1,5 +1,5 @@
-import align_crystal
+import mcstas_to_sqe
 
 
 def test_version():
-    assert align_crystal.__version__
+    assert mcstas_to_sqe.__version__

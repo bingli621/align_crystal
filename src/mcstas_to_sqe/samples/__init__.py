@@ -19,7 +19,7 @@ To add a sample:
    (tests/samples/test_samples.py).
 """
 
-from align_crystal.core.components import Single_crystal
+from mcstas_to_sqe.core.components import Single_crystal
 
 __all__ = ["aluminum", "la2ni7"]
 

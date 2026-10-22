@@ -15,6 +15,6 @@ jobs:
         with:
           locked: true
           cache: true
-      - run: pixi run pytest -q --cov=align_crystal --cov-report=term-missing
+      - run: pixi run pytest -q --cov=mcstas_to_sqe --cov-report=term-missing
       - name: Coverage in job summary
         run: pixi run coverage report --format=markdown >> "$GITHUB_STEP_SUMMARY"

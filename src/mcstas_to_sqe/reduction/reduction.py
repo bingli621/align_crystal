@@ -1,13 +1,13 @@
 """Data reduction: momentum transfer in the lab and sample frames.
 
-Works on the pixel DataArrays returned by `align_crystal.mcstas.nexus_io.read_scan`.
+Works on the pixel DataArrays returned by `mcstas_to_sqe.mcstas.nexus_io.read_scan`.
 """
 
 import numpy as np
 import scipp as sc
 from scippneutron.conversion.graph import beamline, tof
 
-from align_crystal.core.geometry import rotation
+from mcstas_to_sqe.core.geometry import rotation
 
 # scippneutron graph: positions -> two_theta (angle between ki and kf) -> momentum transfer
 Q_GRAPH = {

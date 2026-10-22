@@ -2,11 +2,11 @@ from dataclasses import FrozenInstanceError
 
 import pytest
 
-from align_crystal.core import Slit, Source_simple
-from align_crystal.instruments import Params
-from align_crystal.instruments import SingleCrystalDiffractometer as Diffractometer
-from align_crystal.io import from_dict, to_dict
-from align_crystal.samples import aluminum
+from mcstas_to_sqe.core import Slit, Source_simple
+from mcstas_to_sqe.instruments import Params
+from mcstas_to_sqe.instruments import SingleCrystalDiffractometer as Diffractometer
+from mcstas_to_sqe.io import from_dict, to_dict
+from mcstas_to_sqe.samples import aluminum
 
 
 def test_the_default_file_names_the_components_in_beam_order(diffractometer):

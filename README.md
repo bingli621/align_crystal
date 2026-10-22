@@ -1,6 +1,6 @@
-# align_crystal
+# mcstas_to_sqe
 
-[![CI](https://github.com/bingli621/align_crystal/actions/workflows/ci.yml/badge.svg)](https://github.com/bingli621/align_crystal/actions/workflows/ci.yml)
+[![CI](https://github.com/bingli621/mcstas_to_sqe/actions/workflows/ci.yml/badge.svg)](https://github.com/bingli621/mcstas_to_sqe/actions/workflows/ci.yml)
 
 Single-crystal diffractometer simulation (McStasScript) with a three-axis goniometer, and
 tools to read the McStas NeXus output (McStasToX, scippneutron) and convert to momentum transfer.
@@ -18,7 +18,7 @@ An omega scan over 132 points of La2Ni7, in momentum transfer, normalized
 ## Layout
 
 ```
-src/align_crystal/   the library (installed)
+src/mcstas_to_sqe/   the library (installed)
   core/             the entities any instrument shares: an instrument is a set of components (no
                     files, no McStas)
     components/       the components, one dataclass each, named after the McStas component
@@ -81,7 +81,7 @@ one component's values.
 A parameters file names its instrument and is laid over that one's default with
 `load(path, sample=..., params=...)` (`io/yaml_io.py`), so it need hold only what differs: a value it gives wins, one it
 leaves out, or sets to `null`, stays as made. Its layout is that of
-`src/align_crystal/instruments/diffractometer/params.yaml` (`PARAMS_FILE`), the default diffractometer saved (a test keeps them equal): `instrument`, the class
+`src/mcstas_to_sqe/instruments/diffractometer/params.yaml` (`PARAMS_FILE`), the default diffractometer saved (a test keeps them equal): `instrument`, the class
 (`SingleCrystalDiffractometer`; every file names it), `params` (see below) and one
 section per component name: its `component` (the McStas component),
 its parameters, where it sits (`at`, `rotated`, `relative`), and last its `position` in the lab
@@ -126,17 +126,17 @@ slit:
 ```python
 import numpy as np
 
-from align_crystal.mcstas.nexus_io import read_scan
-from align_crystal.mcstas.simulation import Simulation
-from align_crystal.instruments import Params, SingleCrystalDiffractometer
-from align_crystal.io import load
+from mcstas_to_sqe.mcstas.nexus_io import read_scan
+from mcstas_to_sqe.mcstas.simulation import Simulation
+from mcstas_to_sqe.instruments import Params, SingleCrystalDiffractometer
+from mcstas_to_sqe.io import load
 
 # the diffractometer to simulate, the default one with the file laid over it
 sim = Simulation(load("my_params.yaml", params=Params(ei=14)))
 h5 = sim.scan("omega", np.linspace(-48, 73, 122), chi=0, phi=0)  # a run per omega
 
 # a sample (none by default)
-from align_crystal.samples import la2ni7
+from mcstas_to_sqe.samples import la2ni7
 
 sim = Simulation(
     SingleCrystalDiffractometer(
@@ -155,9 +155,9 @@ sim.scan_from_sample("omega", range(-48, 83), chi=-5.893, phi=0)
 A diffractometer can be created in these ways:
 
 ```python
-from align_crystal.instruments import Params, SingleCrystalDiffractometer
-from align_crystal.io import from_dict, load, save, to_dict, read_yaml
-from align_crystal.samples import la2ni7
+from mcstas_to_sqe.instruments import Params, SingleCrystalDiffractometer
+from mcstas_to_sqe.io import from_dict, load, save, to_dict, read_yaml
+from mcstas_to_sqe.samples import la2ni7
 
 # the default one, made in code (instruments/diffractometer/)
 d = SingleCrystalDiffractometer()
@@ -180,14 +180,14 @@ pixi run python scripts/build_instrument.py             # the .instr file, its d
 pixi run python scripts/plot_scan_2d.py                 # output/scan.gif
 pixi run python scripts/plot_scan_Q.py                  # output/scan_Q.gif
 pixi run python scripts/print_peaks.py                  # peak list of mcstas_output/latest
-pixi run python -c "from align_crystal.instruments import SingleCrystalDiffractometer as D; D().plot_top_view('output/top_view.svg')"
-pixi run pytest --cov=align_crystal --cov-report=term-missing   # tests + coverage
+pixi run python -c "from mcstas_to_sqe.instruments import SingleCrystalDiffractometer as D; D().plot_top_view('output/top_view.svg')"
+pixi run pytest --cov=mcstas_to_sqe --cov-report=term-missing   # tests + coverage
 pixi run pre-commit install                             # once: ruff format on every commit
 ```
 
 McStas builds in `mcstas_input/` and results go to `mcstas_output/` (`latest/`, and `beam/` +
 `split/` for the split run); `Simulation(d, output_dir=..., input_dir=...)` takes others, and the
-environment variable `ALIGN_CRYSTAL_ROOT` moves both. A split run
+environment variable `MCSTAS_TO_SQE_ROOT` moves both. A split run
 simulates source to sample once (`Simulation.run_to_sample`) and then the crystal for one angle (`run_from_sample`) or many in
 parallel (`scan_from_sample`), which can be normalized with the beam run's incident monitor.
 

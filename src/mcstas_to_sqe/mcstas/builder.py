@@ -15,7 +15,7 @@ from pathlib import Path
 
 from mcstasscript.interface import instr
 
-from align_crystal import PROJECT_ROOT
+from mcstas_to_sqe import PROJECT_ROOT
 
 # McStas-generated files (.instr, .c, compiled binary), McStasScript's input_path: mcrun runs
 # here. Created by `build_mcstas`.

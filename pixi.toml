@@ -1,7 +1,7 @@
 [workspace]
 authors = ["Bing Li <bing.li@ess.eu>"]
 channels = ["conda-forge"]
-name = "align_crystal"
+name = "mcstas_to_sqe"
 platforms = ["osx-arm64"]
 version = "0.1.0"
 
@@ -20,5 +20,5 @@ pre-commit = ">=4.7.0,<5"
 tabulate = ">=0.10.0,<0.11"
 
 [pypi-dependencies]
-align_crystal = { path = ".", editable = true }
+mcstas_to_sqe = { path = ".", editable = true }
 mcstastox = { git = "https://github.com/mads-bertelsen-agentic/McStasToX", rev = "entry_choice" }

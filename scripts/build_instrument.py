@@ -12,10 +12,10 @@ In VS Code: run this file, or from a notebook/Interactive Window:
 
 import numpy as np
 
-from align_crystal.instruments import Params, SingleCrystalDiffractometer
-from align_crystal.mcstas.builder import build_mcstas
-from align_crystal.mcstas.simulation import Simulation
-from align_crystal.samples import la2ni7
+from mcstas_to_sqe.instruments import Params, SingleCrystalDiffractometer
+from mcstas_to_sqe.mcstas.builder import build_mcstas
+from mcstas_to_sqe.mcstas.simulation import Simulation
+from mcstas_to_sqe.samples import la2ni7
 
 
 def create_instrument():

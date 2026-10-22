@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass, field, fields
 
-from align_crystal.core.utils import format_value
+from mcstas_to_sqe.core.utils import format_value
 
 
 @dataclass(kw_only=True, repr=False)  # repr: its own, below; each subclass keeps it

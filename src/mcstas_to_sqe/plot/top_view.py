@@ -12,8 +12,8 @@ from pathlib import Path
 
 import numpy as np
 
-from align_crystal.core.base import Instrument
-from align_crystal.core.components import (
+from mcstas_to_sqe.core.base import Instrument
+from mcstas_to_sqe.core.components import (
     Arm,
     Monitor,
     Monitor_nD,
@@ -22,7 +22,7 @@ from align_crystal.core.components import (
     Slit,
     Source_simple,
 )
-from align_crystal.core.geometry import place_absolute
+from mcstas_to_sqe.core.geometry import place_absolute
 
 # the symbol an angle is labelled with, by its instrument parameter (else its name)
 SYMBOLS = {

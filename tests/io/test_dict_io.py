@@ -1,8 +1,8 @@
 import pytest
 
-from align_crystal.core import Slit
-from align_crystal.instruments import SingleCrystalDiffractometer
-from align_crystal.io.dict_io import _components_from_dict, from_dict, merge, to_dict
+from mcstas_to_sqe.core import Slit
+from mcstas_to_sqe.instruments import SingleCrystalDiffractometer
+from mcstas_to_sqe.io.dict_io import _components_from_dict, from_dict, merge, to_dict
 
 DATA = {
     "name": "tiny",

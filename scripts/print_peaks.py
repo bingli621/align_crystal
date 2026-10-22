@@ -3,8 +3,8 @@ save it to a text file.
 
 In VS Code: run this file, or from a notebook/Interactive Window:
 
-    from align_crystal import PROJECT_ROOT
-    from align_crystal.mcstas.simulation import OUTPUT_DIR
+    from mcstas_to_sqe import PROJECT_ROOT
+    from mcstas_to_sqe.mcstas.simulation import OUTPUT_DIR
     from print_peaks import print_peaks, save_peaks
     peaks = print_peaks(OUTPUT_DIR / "latest")
     save_peaks(peaks, PROJECT_ROOT / "output" / "peaks.txt")
@@ -15,9 +15,9 @@ from pathlib import Path
 
 import numpy as np
 
-from align_crystal import PROJECT_ROOT
-from align_crystal.mcstas.simulation import OUTPUT_DIR
-from align_crystal.reduction import find_peaks
+from mcstas_to_sqe import PROJECT_ROOT
+from mcstas_to_sqe.mcstas.simulation import OUTPUT_DIR
+from mcstas_to_sqe.reduction import find_peaks
 
 
 def format_peaks(peaks):

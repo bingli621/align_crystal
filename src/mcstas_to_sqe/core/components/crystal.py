@@ -11,7 +11,7 @@ import numpy as np
 
 from .base import Component
 
-# the CIF files of the ready-made samples (align_crystal/samples/; only the folder, not imported):
+# the CIF files of the ready-made samples (mcstas_to_sqe/samples/; only the folder, not imported):
 # a crystal's `reflections` names one relative to it
 CIF_DIR = Path(__file__).resolve().parents[2] / "samples"
 

@@ -2,8 +2,8 @@
 
 In VS Code: run this file, or from a notebook/Interactive Window:
 
-    from align_crystal import PROJECT_ROOT
-    from align_crystal.mcstas.simulation import OUTPUT_DIR
+    from mcstas_to_sqe import PROJECT_ROOT
+    from mcstas_to_sqe.mcstas.simulation import OUTPUT_DIR
     from plot_scan_2d import plot_scan_2d
     plot_scan_2d(OUTPUT_DIR / "latest", scan_par="omega", out=PROJECT_ROOT / "output" / "scan.gif")
 """
@@ -15,9 +15,9 @@ import numpy as np
 from matplotlib.animation import FuncAnimation, PillowWriter
 from matplotlib.colors import LogNorm
 
-from align_crystal import PROJECT_ROOT
-from align_crystal.mcstas.nexus_io import read_scan
-from align_crystal.mcstas.simulation import OUTPUT_DIR
+from mcstas_to_sqe import PROJECT_ROOT
+from mcstas_to_sqe.mcstas.nexus_io import read_scan
+from mcstas_to_sqe.mcstas.simulation import OUTPUT_DIR
 
 
 def plot_scan_2d(

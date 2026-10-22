@@ -6,7 +6,7 @@ import mcstastox
 import numpy as np
 import scipp as sc
 
-from align_crystal.mcstas.nexus_io import numeric_parameters
+from mcstas_to_sqe.mcstas.nexus_io import numeric_parameters
 
 from .solid_angle import rectangle_solid_angle
 

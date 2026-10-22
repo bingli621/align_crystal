@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from align_crystal.reduction import goniometer_matrix, run_wavelength, wavelength
+from mcstas_to_sqe.reduction import goniometer_matrix, run_wavelength, wavelength
 
 
 def test_goniometer_matrix():

@@ -1,7 +1,7 @@
 import pytest
 
-from align_crystal.instruments import Params, SingleCrystalDiffractometer
-from align_crystal.mcstas.simulation import Simulation
+from mcstas_to_sqe.instruments import Params, SingleCrystalDiffractometer
+from mcstas_to_sqe.mcstas.simulation import Simulation
 
 
 def test_a_run_gives_its_own_values_in_place_of_the_diffractometers():

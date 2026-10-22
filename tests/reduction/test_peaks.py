@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from align_crystal.reduction import centre_of_mass
+from mcstas_to_sqe.reduction import centre_of_mass
 
 
 def _cloud(rng):

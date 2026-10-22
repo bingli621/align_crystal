@@ -1,6 +1,6 @@
 import h5py
 
-from align_crystal.mcstas.nexus_io import merge_entries
+from mcstas_to_sqe.mcstas.nexus_io import merge_entries
 
 
 def test_single_run_files_become_one_entry_each_in_their_order(tmp_path):

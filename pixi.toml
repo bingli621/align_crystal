@@ -2,7 +2,7 @@
 authors = ["Bing Li <bing.li@ess.eu>"]
 channels = ["conda-forge"]
 name = "mcstas_to_sqe"
-platforms = ["osx-arm64"]
+platforms = ["osx-arm64", "linux-64"]
 version = "0.1.0"
 
 [tasks]
@@ -18,7 +18,10 @@ pytest-cov = ">=7.1.0,<8"
 pyyaml = ">=6,<7"
 pre-commit = ">=4.7.0,<5"
 tabulate = ">=0.10.0,<0.11"
+numpy = ">=1.26"
+scipy = ">=1.11"
+h5py = ">=3.10"
 
 [pypi-dependencies]
 mcstas_to_sqe = { path = ".", editable = true }
-mcstastox = { git = "https://github.com/mads-bertelsen-agentic/McStasToX", rev = "entry_choice" }
+mcstastox = { git = "https://github.com/mads-bertelsen-agentic/McStasToX", rev = "af80792680397168f5fd185afa392116bd4cf848" }

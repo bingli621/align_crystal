@@ -9,6 +9,25 @@ description = "mcstas_to_sqe"
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [{ name = "Bing Li", email = "bing.li@ess.eu" }]
+dependencies = [
+    "h5py>=3.10",
+    "matplotlib>=3.8",
+    "mcstasscript>=0.0.94,<0.0.95",
+    "mcstastox @ git+https://github.com/mads-bertelsen-agentic/McStasToX@af80792680397168f5fd185afa392116bd4cf848",
+    "numpy>=1.26",
+    "pyyaml>=6,<7",
+    "scipp>=25.12.0",
+    "scippneutron>=26.9.1",
+    "scipy>=1.11",
+    "tabulate>=0.10.0,<0.11",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=9.1.1", "pytest-cov>=7.1.0"]
+
+[tool.hatch.metadata]
+# mcstastox is not on PyPI; it is pinned to a git commit
+allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/mcstas_to_sqe"]

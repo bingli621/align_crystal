@@ -1,4 +1,4 @@
-"""The single crystal, and how to orient one in the lab frame.
+"""The single-crystal sample and its orientation in the lab frame.
 
 Lab frame (McStas): z along the beam, y up, x to the left of the beam. Ready-made crystals are in
 samples/.
@@ -6,10 +6,14 @@ samples/.
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
 from .base import Component
+
+if TYPE_CHECKING:
+    from mcstas_to_sqe.core.base import Instrument
 
 # the CIF files of the ready-made samples (mcstas_to_sqe/samples/; only the folder, not imported):
 # a crystal's `reflections` names one relative to it
@@ -18,31 +22,66 @@ CIF_DIR = Path(__file__).resolve().parents[2] / "samples"
 
 @dataclass(kw_only=True, repr=False)  # repr: Component's
 class Single_crystal(Component):
-    """A cube of a single crystal of `lattice_params`, oriented so that the reciprocal vector
-    `along_beam` (hkl) is along the beam (+z) and `in_plane` (hkl) is in the horizontal (x-z)
-    plane towards +x (left of the beam), when all goniometer angles are zero. Ready-made crystals:
-    samples/ (`aluminum`, `la2ni7`).
+    """A single-crystal cube, as McStas ``Single_crystal``.
 
-    `astar`, `bstar`, `cstar`, its reciprocal-lattice vectors in the lab frame (1/angstrom, incl.
-    2pi), are computed from these when used (so they follow a change of them); they are not
-    parameters of their own.
+    With all goniometer angles at zero, the crystal is oriented so that the reciprocal vector
+    ``along_beam`` points along the beam (+z) and ``in_plane`` lies in the horizontal x-z plane,
+    towards +x (left of the beam). Ready-made crystals are in samples/ (``aluminum``,
+    ``la2ni7``).
+
+    Placement (``at``, ``rotated``, ``relative``) is as in :class:`.Component`.
+
+    Parameters
+    ----------
+    lattice_params:
+        a, b, c in Å, then alpha, beta, gamma in deg.
+    along_beam:
+        hkl of the reciprocal vector along the beam.
+    in_plane:
+        hkl of the reciprocal vector in the horizontal plane, towards +x.
+    reflections:
+        A McStas reflection list (e.g. ``"Al.lau"``), or a CIF file relative to samples/.
+    xwidth, yheight, zdepth:
+        Size in m.
+    order:
+        Maximum scattering order. 1 means single scattering only, which is much faster.
+    mosaic:
+        Mosaic spread in arc minutes (Gaussian RMS).
+    recip_cell:
+        Must be 1: McStas then takes ``astar``, ``bstar``, ``cstar``, the only parametrization
+        computed here.
     """
 
-    lattice_params: list  # a, b, c (angstrom), alpha, beta, gamma (deg)
-    along_beam: list  # hkl along the beam
-    in_plane: list  # hkl in the horizontal plane, towards +x
-    reflections: str  # a McStas list (Al.lau), or a CIF file relative to samples/
-    xwidth: float = 0.005  # m: a cube by default
-    yheight: float = 0.005  # m
-    zdepth: float = 0.005  # m
-    order: int = 1  # 1 = single scattering only (no multiple scattering): much faster
-    mosaic: float = 5.0  # arc minutes (Gaussian RMS)
-    recip_cell: int = 1  # 1: McStas takes astar, bstar, cstar (the only one it computes)
+    lattice_params: list[float]
+    along_beam: list[float]
+    in_plane: list[float]
+    reflections: str
+    xwidth: float = 0.005
+    yheight: float = 0.005
+    zdepth: float = 0.005
+    order: int = 1
+    mosaic: float = 5.0
+    recip_cell: int = 1
 
-    def mcstas_parameters(self, inst):
-        """Its fields, with its reciprocal vectors in the lab frame (so recip_cell must be 1); its
-        reflections a CIF file of samples/ (as a full path), else as given (a McStas
-        list)."""
+    def mcstas_parameters(self, inst: "Instrument") -> dict[str, Any]:
+        """Return the McStas parameters, with the reciprocal vectors in the lab frame.
+
+        Parameters
+        ----------
+        inst:
+            The instrument the crystal belongs to.
+
+        Returns
+        -------
+        :
+            The fields, plus ``ax`` ... ``cz`` (the reciprocal vectors). ``reflections`` is
+            given as a full path if it names a CIF file in samples/, else unchanged.
+
+        Raises
+        ------
+        ValueError
+            If ``recip_cell`` is not 1.
+        """
         if self.recip_cell != 1:
             raise ValueError(f"{self.name}: recip_cell {self.recip_cell}: only 1 is computed")
         cif = CIF_DIR / self.reflections
@@ -55,19 +94,30 @@ class Single_crystal(Component):
         return super().mcstas_parameters(inst) | {"reflections": reflections, **vectors}
 
     @property
-    def astar(self) -> list:
+    def astar(self) -> list[float]:
+        """Reciprocal vector a* in the lab frame, 1/Å (including 2π)."""
         return self.reciprocal_axes()[0]
 
     @property
-    def bstar(self) -> list:
+    def bstar(self) -> list[float]:
+        """Reciprocal vector b* in the lab frame, 1/Å (including 2π)."""
         return self.reciprocal_axes()[1]
 
     @property
-    def cstar(self) -> list:
+    def cstar(self) -> list[float]:
+        """Reciprocal vector c* in the lab frame, 1/Å (including 2π)."""
         return self.reciprocal_axes()[2]
 
-    def reciprocal_axes(self) -> list:
-        """`astar`, `bstar`, `cstar` (plain floats)."""
+    def reciprocal_axes(self) -> list[list[float]]:
+        """Compute the reciprocal vectors in the lab frame.
+
+        They are computed on every call, so they follow changes of the lattice or orientation.
+
+        Returns
+        -------
+        :
+            ``[astar, bstar, cstar]``, each ``[x, y, z]`` in 1/Å (including 2π).
+        """
         B = self.reciprocal_basis()
         z = B @ np.asarray(self.along_beam, float)
         x = B @ np.asarray(self.in_plane, float)
@@ -77,9 +127,16 @@ class Single_crystal(Component):
         R = np.array([x, np.cross(z, x), z])  # crystal Cartesian -> lab
         return [(R @ B[:, i]).tolist() for i in range(3)]
 
-    def reciprocal_basis(self):
-        """Columns are a*, b*, c* (incl. 2pi) of `lattice_params` in a crystal Cartesian frame with
-        a along x, c* along z."""
+    def reciprocal_basis(self) -> np.ndarray:
+        """Compute the reciprocal basis of ``lattice_params`` in a crystal Cartesian frame.
+
+        The frame has a along x and c* along z.
+
+        Returns
+        -------
+        :
+            (3, 3) matrix whose columns are a*, b*, c* in 1/Å (including 2π).
+        """
         a, b, c, alpha, beta, gamma = self.lattice_params
         al, be, ga = np.radians([alpha, beta, gamma])
         va = np.array([a, 0, 0])

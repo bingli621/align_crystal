@@ -1,20 +1,38 @@
-"""Where the components are: their positions and orientations in the lab frame, as McStas places
-them.
+"""Positions and orientations of components in the lab frame, as McStas computes them.
 
-A component sits at `at` (m) in the frame of the component named `relative` (None: the lab frame),
-rotated by `rotated` (deg: about x, then y, then z) relative to that one, as McStas AT and ROTATED
-with RELATIVE. A value may be a McStas expression of instrument parameters ("-chi"; see
-`utils.evaluate`): `instr_param_dict` gives them. A rotation is McStas's (`rot_set_rotation` in
-mccode-r.c): the matrix from the lab frame to the component's own frame.
+A component sits at ``at`` (m) in the frame of the component named ``relative`` (``None`` means
+the lab frame). It is rotated by ``rotated`` (deg, about x, then y, then z) relative to that
+frame, as McStas AT and ROTATED with RELATIVE.
+
+A value may be a McStas expression of instrument parameters such as ``"-chi"`` (see
+:func:`.utils.evaluate`). A rotation is the matrix from the lab frame to the component's own
+frame, as ``rot_set_rotation`` in McStas's mccode-r.c.
 """
+
+from collections.abc import Mapping
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 from .utils import evaluate
 
+if TYPE_CHECKING:
+    from .components import Component
 
-def rotation(rx, ry, rz) -> np.ndarray:
-    """The McStas rotation matrix of ROTATED (rx, ry, rz), deg: lab frame -> the rotated frame."""
+
+def rotation(rx: float, ry: float, rz: float) -> np.ndarray:
+    """Compute the McStas rotation matrix of ROTATED (rx, ry, rz).
+
+    Parameters
+    ----------
+    rx, ry, rz:
+        Rotation angles about x, y and z, in deg, applied in that order.
+
+    Returns
+    -------
+    :
+        (3, 3) matrix from the lab frame to the rotated frame.
+    """
     cx, cy, cz = np.cos(np.radians([rx, ry, rz]))
     sx, sy, sz = np.sin(np.radians([rx, ry, rz]))
     return np.array(
@@ -26,14 +44,28 @@ def rotation(rx, ry, rz) -> np.ndarray:
     )
 
 
-def place_absolute(components: dict, instr_param_dict: dict) -> dict:
-    """Each component placed ABSOLUTE: its `at`/`rotated` RELATIVE chain followed back to the lab
-    frame, as McStas does. A dict by name of (position, rotation): position in m, rotation the
-    matrix lab -> its frame.
+def place_absolute(
+    components: Mapping[str, "Component"], instr_param_dict: Mapping[str, float]
+) -> dict[str, tuple[np.ndarray, np.ndarray]]:
+    """Place every component in the lab frame, as McStas ABSOLUTE.
 
-    `components` (name -> component) are in order: one placed `relative` to another comes after
-    it. `instr_param_dict` (McStas name -> value) gives the instrument parameters that the `at`
-    and `rotated` expressions name ("omega", "-chi")."""
+    Each component's ``at``/``rotated``/``relative`` chain is followed back to the lab frame.
+
+    Parameters
+    ----------
+    components:
+        Components by name, in beam order. A component placed ``relative`` to another must come
+        after it.
+    instr_param_dict:
+        Instrument parameter values by McStas name. They resolve the expressions in ``at`` and
+        ``rotated``, e.g. ``"omega"`` or ``"-chi"``.
+
+    Returns
+    -------
+    :
+        ``(position, rotation)`` by component name: the position in m, and the rotation matrix
+        from the lab frame to the component's frame.
+    """
     at_rotated_absolute_dict = {}
     for name, c in components.items():
         parent_pos, parent_rot = (

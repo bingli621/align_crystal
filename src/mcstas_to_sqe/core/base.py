@@ -1,21 +1,22 @@
-"""The base of any instrument: Instrument; and INSTRUMENTS, every instrument class by its name
-(a subclass is added when it is defined: what a parameters file's `instrument:` names).
+"""Base class of every instrument.
 
-An instrument is its components, one attribute each, in the order of the beam (the attribute's
-name is the one a `relative` refers to, and the McStas instance name), and its control parameters
-(`params`: a frozen dataclass, the class's `params_class`, each field with its unit and comment in
-its metadata; see `params.param`).
+An instrument is two things:
 
-A subclass (e.g. `SingleCrystalDiffractometer`) sets, as class attributes, its `params_class` and
-its McStas instrument `name`; makes its components in `__init__`, which must take `params` as a
-keyword (io/ makes it with only that) and call `super().__init__(params)` first; and says which
-McStas instrument parameters follow from its params (`instr_params`).
+- its components, one attribute each, in beam order. The attribute name is the McStas instance
+  name and the name a component's ``relative`` refers to.
+- its control parameters, ``params``. This is a frozen dataclass, the class's ``params_class``,
+  whose fields carry a unit and a comment in their metadata (see :func:`.params.param`).
 
-The rest is the same for every instrument, and io/ and mcstas/ rely only on it: `name`, `params`
-and `update_params`, `components`, `instr_params`, `positions`, equality and the summary (repr).
+``INSTRUMENTS`` maps every subclass's class name to the class. A parameters file's
+``instrument:`` entry names one of them.
+
+The io/ and mcstas/ layers rely only on what this base class provides: ``name``, ``params``,
+``update_params``, ``components``, ``instr_params``, ``positions``, equality and the summary
+(``repr``).
 """
 
 from dataclasses import asdict, fields, replace
+from typing import Any
 
 from .components import Component
 from .geometry import place_absolute
@@ -26,56 +27,95 @@ INSTRUMENTS: dict[str, type] = {}  # every subclass of Instrument by its class n
 
 
 class Instrument:
-    """The components, one attribute each, in the order of the beam, and the control parameters
-    (`params`). `components` gives the components as a dict by name, `instr_params` the McStas
-    instrument parameters.
+    """Base class of an instrument made of components.
 
-    Where a component takes a number (or a list of them, as `at` and `rotated`), it may be given
-    the name of an instrument parameter instead, or an expression of them ("-chi"), as in McStas.
+    Where a component takes a number, or a list of numbers such as ``at`` and ``rotated``, it may
+    instead be given the name of an instrument parameter, or an expression of them such as
+    ``"-chi"``, as in McStas.
+
+    Parameters
+    ----------
+    params:
+        Control parameters, an instance of :attr:`params_class`.
+        If ``None``, the defaults of :attr:`params_class` are used.
+
+    Notes
+    -----
+    A subclass, e.g. ``SingleCrystalDiffractometer``, must:
+
+    - set the class attributes :attr:`params_class` and :attr:`name`;
+    - create its components in ``__init__`` in beam order, after calling
+      ``super().__init__(params)``. ``__init__`` must accept ``params`` as a keyword, since io/
+      creates instruments with that argument only;
+    - implement :attr:`instr_params`.
     """
 
     params_class: type  # the frozen dataclass of the control parameters: a subclass sets it
     name: str  # the McStas instrument name: a subclass sets it (an instance may change its own)
 
-    def __init_subclass__(cls, **kwargs):
-        """Add the subclass to INSTRUMENTS, by its class name."""
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        """Register the subclass in ``INSTRUMENTS`` under its class name."""
         super().__init_subclass__(**kwargs)
         INSTRUMENTS[cls.__name__] = cls
 
-    def __setattr__(self, attr, value):
-        """Set an attribute; a component set on it gets its name (the attribute's)."""
+    def __setattr__(self, attr: str, value: Any) -> None:
+        """Set an attribute, naming a component after the attribute it is set on."""
         if isinstance(value, Component):
             value.name = attr
         super().__setattr__(attr, value)
 
-    def __init__(self, params=None):
-        """Its control parameters `params` (a `params_class`; None: its defaults); a subclass then
-        sets its components, in the order of the beam."""
+    def __init__(self, params: Any | None = None) -> None:
         self._params = self.params_class() if params is None else params
 
     @property
-    def params(self):
-        """Its control parameters (frozen: `update_params` changes them)."""
+    def params(self) -> Any:
+        """Control parameters, an instance of :attr:`params_class`.
+
+        They are frozen; use :meth:`update_params` to change them.
+        """
         return self._params
 
-    def update_params(self, **values):
-        """Change control parameters, e.g. `update_params(ei=25)`; an unknown name raises."""
+    def update_params(self, **values: Any) -> None:
+        """Change control parameters.
+
+        Parameters
+        ----------
+        **values:
+            New values by parameter name, e.g. ``update_params(ei=25)``.
+
+        Raises
+        ------
+        TypeError
+            If a name is not a field of :attr:`params_class`.
+        """
         self._params = replace(self._params, **values)
 
     @property
     def instr_params(self) -> list[InstrParam]:
-        """The McStas instrument parameters, calculated from the params: a subclass says which."""
+        """McStas instrument parameters, computed from :attr:`params`.
+
+        A subclass must implement this.
+        """
         raise NotImplementedError
 
     @property
     def components(self) -> dict[str, Component]:
-        """The components by name, in the order of the beam (one set to None left out): its
-        attributes that are components, in the order `__init__` first sets them."""
+        """Components by name, in beam order.
+
+        These are the attributes that hold a component, in the order ``__init__`` first sets
+        them. An attribute set to ``None`` is left out.
+        """
         return {n: v for n, v in vars(self).items() if isinstance(v, Component)}
 
     def positions(self) -> dict[str, list[float]]:
-        """The position of each component (by name) in the lab frame, m, at its angles; rounded to
-        the nm, so rotation noise reads 0.0 (+ 0.0: never -0.0)."""
+        """Compute the position of every component in the lab frame.
+
+        Returns
+        -------
+        :
+            ``[x, y, z]`` in m by component name, at the current angles. Values are rounded to
+            1 nm so that rotation noise reads ``0.0``, never ``-0.0``.
+        """
         instr_param_dict = {p.name: p.value for p in self.instr_params}
         at_rotated_dict = place_absolute(
             self.components, instr_param_dict
@@ -85,10 +125,13 @@ class Instrument:
             for name, (position, _rotation) in at_rotated_dict.items()
         }
 
-    def __repr__(self):
-        """A summary to read: the params, the instrument parameters, and the components in the
-        order of the beam (where each sits, and its position in the lab frame; a component's own
-        repr shows its values)."""
+    def __repr__(self) -> str:
+        """Summarize the instrument as tables.
+
+        The tables show the params, the McStas instrument parameters, and the components in beam
+        order with their placement and lab-frame position. A component's own ``repr`` shows its
+        values.
+        """
         from tabulate import tabulate  # only when printed: importing does not need it
 
         values = asdict(self._params)
@@ -126,7 +169,7 @@ class Instrument:
             ]
         )
 
-    def __eq__(self, other):  # also makes it unhashable: its components can be changed
+    def __eq__(self, other: object) -> bool:  # also makes it unhashable: its components change
         if type(other) is not type(self):
             return False
         mine = (self.name, self._params, self.components)

@@ -1,15 +1,16 @@
-"""Small helpers of the instrument.
+"""Small helpers for instruments.
 
-`format_value` gives a value short, for display.
-
-`evaluate` gives the number a component value stands for: a McStas expression of instrument
-parameters ("-chi", "2.0*omega + 5") is parsed with `ast` and computed as McStas would, with only
-what McStas offers allowed (no code is run).
+- :func:`format_value` formats a value briefly, for display.
+- :func:`evaluate` computes the number a component value stands for. A McStas expression of
+  instrument parameters (``"-chi"``, ``"2.0*omega + 5"``) is parsed with ``ast`` and computed as
+  McStas would. Only what McStas offers is allowed, and no code is run.
 """
 
 import ast
 import math
 import operator
+from collections.abc import Mapping
+from typing import Any
 
 # what an expression may use: McStas's constants and its C math functions
 CONSTANTS = {"PI": math.pi, "DEG2RAD": math.pi / 180, "RAD2DEG": 180 / math.pi}
@@ -36,23 +37,46 @@ _BINARY = {
 _UNARY = {ast.USub: operator.neg, ast.UAdd: operator.pos}
 
 
-def evaluate(entry, params: dict) -> float:
-    """The number `entry` stands for: itself if a number, else the value of the McStas expression
-    it is, with `params` (the instrument parameters by name). An expression may use numbers,
-    instrument parameters, `CONSTANTS`, + - * /, signs, brackets and `FUNCTIONS`; anything else
-    raises a ValueError. A division of two integers raises too: C would round it down (write 1.0/2).
+def evaluate(entry: float | str, params: Mapping[str, float]) -> float:
+    """Compute the number a component value stands for.
 
-    With params = {"omega": 30, "chi": 5}:
-        evaluate(1.5, params)                     -> 1.5
-        evaluate("omega", params)                 -> 30
-        evaluate("-chi", params)                  -> -5
-        evaluate("2.0*omega + chi", params)       -> 65.0
-        evaluate("atan2(1, 1)*RAD2DEG", params)   -> 45.0
+    Parameters
+    ----------
+    entry:
+        A number, returned unchanged, or a McStas expression. An expression may use numbers,
+        instrument parameters, ``CONSTANTS``, ``+ - * /``, signs, brackets and ``FUNCTIONS``.
+    params:
+        Instrument parameter values by name.
+
+    Returns
+    -------
+    :
+        The value of ``entry``.
+
+    Raises
+    ------
+    ValueError
+        If ``entry`` is not a valid expression, uses anything not listed above, or divides two
+        integers. C would round such a division down, so write ``1.0/2``.
+
+    Examples
+    --------
+    >>> params = {"omega": 30, "chi": 5}
+    >>> evaluate(1.5, params)
+    1.5
+    >>> evaluate("omega", params)
+    30
+    >>> evaluate("-chi", params)
+    -5
+    >>> evaluate("2.0*omega + chi", params)
+    65.0
+    >>> evaluate("atan2(1, 1)*RAD2DEG", params)
+    45.0
     """
     if not isinstance(entry, str):
         return entry
 
-    def value(node):
+    def value(node: ast.expr) -> float:
         match node:
             case ast.Constant(value=int() | float() as number) if not isinstance(number, bool):
                 return number
@@ -82,9 +106,19 @@ def evaluate(entry, params: dict) -> float:
     return value(tree.body)
 
 
-def format_value(value) -> str:
-    """`value` formatted for display: a number with at most 6 significant digits, a list of them
-    in brackets, anything else as it is."""
+def format_value(value: Any) -> str:
+    """Format a value briefly, for display.
+
+    Parameters
+    ----------
+    value:
+        A number, a list (formatted item by item), or anything else.
+
+    Returns
+    -------
+    :
+        A number with at most 6 significant digits, a list in brackets, or ``str(value)``.
+    """
     if isinstance(value, list):
         return "[" + ", ".join(format_value(v) for v in value) + "]"
     if isinstance(value, float | int) and not isinstance(value, bool):

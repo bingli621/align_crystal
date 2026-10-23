@@ -1,4 +1,4 @@
-"""The components that fit no other file: Progress_bar, Slit, Arm."""
+"""Components that fit no other module: Progress_bar, Slit, Arm."""
 
 from dataclasses import dataclass
 
@@ -7,15 +7,32 @@ from .base import Component
 
 @dataclass(kw_only=True, repr=False)  # repr: Component's
 class Progress_bar(Component):
-    pass
+    """McStas ``Progress_bar``, which reports simulation progress.
+
+    Placement (``at``, ``rotated``, ``relative``) is as in :class:`.Component`.
+    """
 
 
 @dataclass(kw_only=True, repr=False)  # repr: Component's
 class Slit(Component):
-    xwidth: float  # opening, m
-    yheight: float  # opening, m
+    """A rectangular slit, as McStas ``Slit``.
+
+    Placement (``at``, ``rotated``, ``relative``) is as in :class:`.Component`.
+
+    Parameters
+    ----------
+    xwidth, yheight:
+        Opening in m.
+    """
+
+    xwidth: float
+    yheight: float
 
 
 @dataclass(kw_only=True, repr=False)  # repr: Component's
 class Arm(Component):
-    """A reference frame (a goniometer axis, when its `rotated` uses an instrument parameter)."""
+    """A reference frame, as McStas ``Arm``.
+
+    An arm whose ``rotated`` uses an instrument parameter acts as a goniometer axis.
+    Placement (``at``, ``rotated``, ``relative``) is as in :class:`.Component`.
+    """

@@ -1,24 +1,37 @@
-"""The parameters of any instrument: param and InstrParam.
+"""Parameter types shared by all instruments.
 
-param: a field of a control-parameters dataclass, with its unit and comment in its metadata (what
-io/ writes next to its value). Every instrument's `params_class` is made of them (the
-diffractometer's: `Params` in instruments/diffractometer/scd.py).
+- :func:`param` declares a field of a control-parameters dataclass, with a unit and a comment
+  that io/ writes next to its value. Every instrument's ``params_class`` is built from them; see
+  ``Params`` in instruments/diffractometer/scd.py.
+- :class:`InstrParam` is one McStas instrument parameter, which a run may set. An instrument's
+  ``instr_params`` is a list of them, computed from its control parameters.
 
-InstrParam: one McStas instrument parameter, which McStas takes and a run may set; an instrument's
-`instr_params` is the list of them (each with its value, unit and comment), calculated from its
-params. The components are general: a component value that one gives is the parameter's name (or
-an expression of them) instead of a number, as in McStas (`rotated: [0, "omega", 0]`).
+Components stay general: a component value that an instrument parameter provides is given as
+the parameter's name, or an expression of them, as in McStas (``rotated: [0, "omega", 0]``).
 
-(The design parameters are the components' own values; how they are stored in a file is the io
-layer's business, and simulation parameters, how McStas runs, belong to the McStas layer.)
+Design parameters are the components' own values. How they are stored in a file belongs to
+io/, and how McStas runs belongs to mcstas/.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import Field, dataclass, field
+from typing import Any
 
 
 @dataclass(frozen=True)
 class InstrParam:
-    """One instrument parameter: its McStas name, value, unit and comment."""
+    """A McStas instrument parameter.
+
+    Parameters
+    ----------
+    name:
+        McStas name.
+    value:
+        Default value.
+    unit:
+        Unit, for display.
+    comment:
+        Description, for display.
+    """
 
     name: str
     value: object = None
@@ -26,6 +39,21 @@ class InstrParam:
     comment: str = ""
 
 
-def param(default: float, unit: str, comment: str):
-    """A field of a `params_class`: its default, with its `unit` and `comment` in its metadata."""
+def param(default: Any, unit: str, comment: str) -> Field:
+    """Declare a field of a ``params_class``.
+
+    Parameters
+    ----------
+    default:
+        Default value.
+    unit:
+        Unit, stored in the field's metadata.
+    comment:
+        Description, stored in the field's metadata.
+
+    Returns
+    -------
+    :
+        A dataclass field to assign in the class body.
+    """
     return field(default=default, metadata={"unit": unit, "comment": comment})

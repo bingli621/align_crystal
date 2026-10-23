@@ -2,26 +2,62 @@
 
 import math
 from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any
 
 from .base import Component
+
+if TYPE_CHECKING:
+    from mcstas_to_sqe.core.base import Instrument
 
 
 @dataclass(kw_only=True, repr=False)  # repr: Component's
 class Source_simple(Component):
-    """A monochromatic source."""
+    """A monochromatic circular source, as McStas ``Source_simple``.
 
-    radius: float  # m
-    focus_on: str  # name of the component the source focuses on (at its distance, in McStas)
-    focus_xw: float  # m
-    focus_yh: float  # m
+    Placement (``at``, ``rotated``, ``relative``) is as in :class:`.Component`.
+
+    Parameters
+    ----------
+    radius:
+        Radius in m.
+    focus_on:
+        Name of the component the source focuses on, at that component's distance.
+    focus_xw, focus_yh:
+        Width and height of the focusing target in m.
+    flux:
+        Source flux.
+    lambda0:
+        Mean wavelength in Å, or the name of the instrument parameter that provides it.
+    dlambda:
+        Wavelength spread in Å. 0 is monochromatic.
+    """
+
+    radius: float
+    focus_on: str
+    focus_xw: float
+    focus_yh: float
     flux: float
-    lambda0: float | str = (
-        "wavelength"  # angstrom, or the name of the instrument parameter that gives it
-    )
-    dlambda: float  # wavelength spread, angstrom: 0 = monochromatic
+    lambda0: float | str = "wavelength"
+    dlambda: float
 
-    def mcstas_parameters(self, inst):
-        """Its fields, with the distance of the component it focuses on."""
+    def mcstas_parameters(self, inst: "Instrument") -> dict[str, Any]:
+        """Return the McStas parameters, with the distance to ``focus_on``.
+
+        Parameters
+        ----------
+        inst:
+            The instrument the source belongs to, which gives the positions.
+
+        Returns
+        -------
+        :
+            The fields, plus ``dist``: the distance in m to the component ``focus_on``.
+
+        Raises
+        ------
+        ValueError
+            If ``focus_on`` is not a component of ``inst``.
+        """
         positions = inst.positions()
         if self.focus_on not in positions:
             raise ValueError(f"{self.name}: focus_on {self.focus_on!r} is no component")
@@ -30,5 +66,16 @@ class Source_simple(Component):
 
     @staticmethod
     def wavelength_from_ei(ei: float) -> float:
-        """The neutron wavelength of the energy `ei` (meV), angstrom: sqrt(81.80421 / ei)."""
+        """Convert a neutron energy to its wavelength.
+
+        Parameters
+        ----------
+        ei:
+            Energy in meV.
+
+        Returns
+        -------
+        :
+            Wavelength in Å, ``sqrt(81.80421 / ei)``.
+        """
         return math.sqrt(81.80421 / ei)

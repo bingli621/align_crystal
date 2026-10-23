@@ -1,16 +1,25 @@
-"""The building blocks of an instrument: one dataclass per McStas component.
+"""Building blocks of an instrument: one dataclass per McStas component.
 
-They carry almost no defaults of their own (see instruments/diffractometer/; Single_crystal has a
-few) and know nothing about files. Each gives its McStas parameters (`mcstas_parameters`: its
-fields, and what it computes), but imports no McStas code. A value that follows from a
-component's own values is a property computed when used (the crystal's reciprocal vectors); one
-that depends on other components is left to the diffractometer (the positions, `positions`).
+Components carry almost no defaults of their own (see instruments/diffractometer/;
+``Single_crystal`` has a few) and know nothing about files. Each provides its McStas parameters
+through ``mcstas_parameters`` (its fields plus anything it computes), but imports no McStas code.
 
-base.py     the base `Component`
-misc.py     the simple ones: Progress_bar, Slit, Arm
-source.py    Source_simple
-detector.py  Monitor, Monitor_nD
-crystal.py   Single_crystal (ready-made ones: samples/)
+A value that follows from a component's own values is a property computed when used, such as the
+crystal's reciprocal vectors. A value that depends on other components, such as the positions, is
+left to the instrument.
+
+Modules
+-------
+base
+    The base class :class:`Component`.
+misc
+    The simple components: ``Progress_bar``, ``Slit``, ``Arm``.
+source
+    ``Source_simple``.
+detector
+    ``Monitor``, ``Monitor_nD``.
+crystal
+    ``Single_crystal``. Ready-made crystals are in samples/.
 """
 
 from .base import Component

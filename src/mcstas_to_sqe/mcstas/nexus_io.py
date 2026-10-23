@@ -1,10 +1,16 @@
-"""Read and write McStas NeXus (HDF5) output: `read_scan` reads it with mcstastox,
-`merge_entries` makes one scan file of single-run files.
+"""Read and write McStas NeXus (HDF5) output.
 
-A scan file holds one entry per scan point (entry1, entry2, ...). This needs the mcstastox
-branch with `entry_number` support (https://github.com/mads-bertelsen-agentic/McStasToX,
+- :func:`read_scan` reads a scan with mcstastox.
+- :func:`merge_entries` merges single-run files into one scan file.
+
+A scan file holds one entry per scan point (entry1, entry2, ...). Reading it needs the mcstastox
+branch with ``entry_number`` support (https://github.com/mads-bertelsen-agentic/McStasToX,
 branch entry_choice).
 """
+
+from collections.abc import Iterable, Mapping
+from pathlib import Path
+from typing import Any
 
 import h5py
 import mcstastox
@@ -12,8 +18,19 @@ import numpy as np
 import scipp as sc
 
 
-def numeric_parameters(parameters):
-    """The instrument parameters that are numbers, as floats (drops e.g. the beam file name)."""
+def numeric_parameters(parameters: Mapping[str, Any]) -> dict[str, float]:
+    """Keep the instrument parameters that are numbers.
+
+    Parameters
+    ----------
+    parameters:
+        Instrument parameters by name.
+
+    Returns
+    -------
+    :
+        The numeric ones as floats. Others, e.g. the beam file name, are dropped.
+    """
     numeric = {}
     for key, value in parameters.items():
         try:
@@ -23,17 +40,42 @@ def numeric_parameters(parameters):
     return numeric
 
 
-def read_scan(folder, component="detector", source="source", sample="sample_pos"):
-    """Return a list of (parameters, events) for each scan point.
+def read_scan(
+    folder: str | Path,
+    component: str = "detector",
+    source: str = "source",
+    sample: str = "sample_pos",
+) -> list[tuple[dict[str, float], sc.DataArray]]:
+    """Read every scan point of a McStas NeXus file.
 
-    `parameters` is a dict of the instrument parameters of that point;
-    `events` is a scipp DataArray over 'pixel_id' with the intensity summed per pixel and coords
-    `position`, `pixel_id`, `gamma` [deg, signed in-plane scattering angle, negative to the right
-    of the beam; not scippneutron's two_theta, which is the full angle between ki and kf] and `y` [m] (height above the sample). Only pixels that were hit are included.
+    Parameters
+    ----------
+    folder:
+        Run folder with the ``mccode.h5`` to read.
+    component:
+        Name of the detector component.
+    source:
+        Name of the source component.
+    sample:
+        Name of the sample position component.
 
-    A split run (`scan_from_sample`) has no source in its file: its `source_position` is then put
-    1 m upstream of the sample along the beam (+z, as in this instrument), which gives the right
-    incident direction for the elastic Q (its distance does not matter).
+    Returns
+    -------
+    :
+        One ``(parameters, pixels)`` per scan point:
+
+        - ``parameters``: the numeric instrument parameters of the point.
+        - ``pixels``: intensity summed per pixel, over ``pixel_id``. Only pixels that were hit
+          are included. Coords are ``position``, ``pixel_id``, ``gamma`` and ``y``.
+          ``gamma`` is the signed in-plane scattering angle in deg, negative to the right of the
+          beam (not scippneutron's ``two_theta``, the full angle between ki and kf). ``y`` is the
+          height above the sample in m.
+
+    Notes
+    -----
+    A split run (``scan_from_sample``) has no source in its file. Its ``source_position`` is
+    then put 1 m upstream of the sample along the beam (+z), which gives the right incident
+    direction for the elastic Q; the distance does not matter.
     """
     points = []
     with mcstastox.Read(str(folder)) as data:
@@ -59,9 +101,21 @@ def read_scan(folder, component="detector", source="source", sample="sample_pos"
     return points
 
 
-def merge_entries(files, merged):
-    """Write the single-entry McStas file of each of `files` into one scan file `merged`, as
-    `entry1`, `entry2`, ... in the order of `files`. Returns `merged`."""
+def merge_entries(files: Iterable[str | Path], merged: Path) -> Path:
+    """Merge single-entry McStas files into one scan file.
+
+    Parameters
+    ----------
+    files:
+        McStas NeXus files, each with one entry ``entry1``.
+    merged:
+        File to write, overwritten if it exists.
+
+    Returns
+    -------
+    :
+        ``merged``, with the entries ``entry1``, ``entry2``, ... in the order of ``files``.
+    """
     with h5py.File(merged, "w") as out:
         for n, file in enumerate(files, start=1):
             with h5py.File(file) as part:

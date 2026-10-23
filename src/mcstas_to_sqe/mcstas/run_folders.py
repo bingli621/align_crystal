@@ -1,10 +1,12 @@
-"""The run folders a `Simulation` writes into.
+"""Run folders that a :class:`.Simulation` writes into.
 
-Each run writes into its own folder in the output folder (`default_output_dir()`), named by
-default after the time it started and what it runs, e.g. `20261022-143005_scan_omega`.
-`run_folder` picks that folder and clears the way for the run to write it; `list_runs`,
-`latest_run` and `latest_beam` find the finished runs, and `clean_runs` removes the older ones
-(never a `run_to_sample` one).
+Each run writes into its own folder in the output folder (:func:`default_output_dir`). By
+default the folder is named after the start time and what the run does, e.g.
+``20261022-143005_scan_omega``.
+
+- :func:`run_folder` picks that folder and clears the way for the run to write it.
+- :func:`list_runs`, :func:`latest_run` and :func:`latest_beam` find finished runs.
+- :func:`clean_runs` removes older runs, never a ``run_to_sample`` one.
 """
 
 import re
@@ -15,20 +17,36 @@ from pathlib import Path
 from mcstas_to_sqe import default_work_dir
 
 
-def default_output_dir(work_dir=None):
-    """The folder of the simulation output (a folder per run), McStasScript's output_path:
-    `work_dir/mcstas_output` (None for `default_work_dir()`). Created by each run."""
+def default_output_dir(work_dir: str | Path | None = None) -> Path:
+    """Return the folder of the simulation output, McStasScript's ``output_path``.
+
+    It holds one folder per run, and each run creates it if missing.
+
+    Parameters
+    ----------
+    work_dir:
+        Work folder. If ``None``, :func:`.default_work_dir` is used.
+
+    Returns
+    -------
+    :
+        ``work_dir/mcstas_output``.
+    """
     return Path(work_dir or default_work_dir()) / "mcstas_output"
 
 
-def _check_name(folder_name):
-    """Check that `folder_name` is a plain folder name: letters, digits, `.`, `_` and `-`,
-    starting with a letter or digit.
+def _check_name(folder_name: object) -> None:
+    """Check that ``folder_name`` is a plain folder name.
 
-    A run removes its folder before writing it, so a name like `..`, `/home` or `a/b` must never
-    get through: it would remove a folder outside the output folder.
+    A plain name has letters, digits, ``.``, ``_`` and ``-``, and starts with a letter or digit.
+    A run removes its folder before writing it, so a name like ``..``, ``/home`` or ``a/b`` must
+    never get through: it would remove a folder outside the output folder.
 
-    Raises ValueError if `folder_name` is not a string or not such a name."""
+    Raises
+    ------
+    ValueError
+        If ``folder_name`` is not a string or not a plain folder name.
+    """
     safe = isinstance(folder_name, str) and re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", folder_name)
     if not safe:
         raise ValueError(
@@ -36,12 +54,13 @@ def _check_name(folder_name):
         )
 
 
-def _new_name(output_dir, mode):
-    """A new run folder name, not yet taken in `output_dir`: the local time now and `mode`,
-    e.g. `20261022-143005_scan_omega`.
+def _new_name(output_dir: Path, mode: str) -> str:
+    """Return a new run folder name, not yet taken in ``output_dir``.
 
-    A run started in the same second as an earlier one gets `-2`, `-3`, ... appended, e.g.
-    `20261022-143005_scan_omega-2`, so it never overwrites the earlier run."""
+    The name is the local time now and ``mode``, e.g. ``20261022-143005_scan_omega``. A run
+    started in the same second as an earlier one gets ``-2``, ``-3``, ... appended, so it never
+    overwrites the earlier run.
+    """
     name = unique = f"{datetime.now().astimezone():%Y%m%d-%H%M%S}_{mode}"
     n = 1
     while (output_dir / unique).exists():
@@ -50,18 +69,33 @@ def _new_name(output_dir, mode):
     return unique
 
 
-def run_folder(output_dir, folder_name, mode):
-    """The folder in `output_dir` a run writes into, `output_dir / folder_name`.
+def run_folder(output_dir: Path, folder_name: str | None, mode: str) -> Path:
+    """Return the folder a run writes into, and clear the way for it.
 
-    `folder_name` None gives a new folder named by the time now and `mode` (what the run does,
-    e.g. "run", "scan_omega", "run_to_sample"), so each run keeps its own output. A
-    `folder_name` given names the folder outright, and a folder of that name from an earlier run
-    is removed, so the run replaces it.
+    The run folder itself is not created, since McStas refuses to write into an existing folder.
+    ``output_dir`` is created with its parents, since McStas does not create them.
 
-    The run folder itself is not created (McStas refuses to write into an existing folder), but
-    `output_dir` is, with its parents (McStas does not create them).
+    Parameters
+    ----------
+    output_dir:
+        Output folder.
+    folder_name:
+        Name of the run folder. A folder of that name from an earlier run is removed, so the run
+        replaces it. If ``None``, a new name from the time now and ``mode`` is used, so each run
+        keeps its own output.
+    mode:
+        What the run does, e.g. ``"run"``, ``"scan_omega"``, ``"run_to_sample"``.
 
-    Raises ValueError if `folder_name` is not a plain folder name (see `_check_name`)."""
+    Returns
+    -------
+    :
+        ``output_dir / folder_name``.
+
+    Raises
+    ------
+    ValueError
+        If ``folder_name`` is not a plain folder name of letters, digits, ``.``, ``_`` and ``-``.
+    """
     if folder_name is None:
         folder_name = _new_name(output_dir, mode)
     _check_name(folder_name)
@@ -71,10 +105,22 @@ def run_folder(output_dir, folder_name, mode):
     return path
 
 
-def list_runs(output_dir=None):
-    """The names of the finished run folders in `output_dir` (None for `default_output_dir()`),
-    the ones with a `mccode.h5`, newest first, e.g.
-    `["20261022-143005_scan_omega", "20261022-120000_run_to_sample"]`."""
+def list_runs(output_dir: str | Path | None = None) -> list[str]:
+    """List the finished run folders, newest first.
+
+    A run is finished when its folder has a ``mccode.h5``.
+
+    Parameters
+    ----------
+    output_dir:
+        Output folder. If ``None``, :func:`default_output_dir` is used.
+
+    Returns
+    -------
+    :
+        Folder names, e.g. ``["20261022-143005_scan_omega", "20261022-120000_run_to_sample"]``.
+        Empty if ``output_dir`` does not exist.
+    """
     output_dir = Path(output_dir or default_output_dir())
     if not output_dir.is_dir():
         return []
@@ -83,11 +129,27 @@ def list_runs(output_dir=None):
     return [run.name for run in runs]
 
 
-def latest_run(output_dir=None, pattern="*"):
-    """The newest finished run folder in `output_dir` (None for `default_output_dir()`) whose
-    name matches `pattern`, e.g. "*_scan_omega", "*_run_to_sample", "*_from_sample".
+def latest_run(output_dir: str | Path | None = None, pattern: str = "*") -> Path:
+    """Return the newest finished run folder whose name matches a pattern.
 
-    Raises FileNotFoundError if there is none."""
+    Parameters
+    ----------
+    output_dir:
+        Output folder. If ``None``, :func:`default_output_dir` is used.
+    pattern:
+        Glob pattern for the folder name, e.g. ``"*_scan_omega"``, ``"*_run_to_sample"``,
+        ``"*_from_sample"``.
+
+    Returns
+    -------
+    :
+        The run folder.
+
+    Raises
+    ------
+    FileNotFoundError
+        If no finished run matches.
+    """
     output_dir = Path(output_dir or default_output_dir())
     for name in list_runs(output_dir):
         if Path(name).match(pattern):
@@ -95,39 +157,78 @@ def latest_run(output_dir=None, pattern="*"):
     raise FileNotFoundError(f"no finished run {pattern!r} in {output_dir}")
 
 
-def latest_beam(output_dir=None):
-    """The newest beam file (`beam.mcpl.gz`, of a `run_to_sample`) of the finished runs in
-    `output_dir` (None for `default_output_dir()`), or None if there is none."""
+def latest_beam(output_dir: str | Path | None = None) -> Path | None:
+    """Return the newest beam file of the finished runs.
+
+    Parameters
+    ----------
+    output_dir:
+        Output folder. If ``None``, :func:`default_output_dir` is used.
+
+    Returns
+    -------
+    :
+        The ``beam.mcpl.gz`` of the newest run that has one (a ``run_to_sample``), or ``None``.
+    """
     output_dir = Path(output_dir or default_output_dir())
     beams = [output_dir / run / "beam.mcpl.gz" for run in list_runs(output_dir)]
     return next((beam for beam in beams if beam.is_file()), None)
 
 
-def monitor_file(folder, output_dir=None):
-    """The file with the incident monitor that normalizes the run in `folder`: for a run from
-    the sample (a name ending in `_from_sample`), the `mccode.h5` of the newest `run_to_sample`
-    in `output_dir` (None for `folder`'s parent), as its own file has no monitor; else None, as
-    the run has its own monitor.
+def monitor_file(folder: str | Path, output_dir: str | Path | None = None) -> Path | None:
+    """Return the file with the incident monitor that normalizes a run.
 
-    Raises FileNotFoundError if a run from the sample finds no `run_to_sample`."""
+    A run from the sample (a folder name ending in ``_from_sample``) has no monitor in its own
+    file, so it is normalized by the newest ``run_to_sample``.
+
+    Parameters
+    ----------
+    folder:
+        The run folder.
+    output_dir:
+        Where to look for the ``run_to_sample``. If ``None``, ``folder``'s parent.
+
+    Returns
+    -------
+    :
+        For a run from the sample, the ``mccode.h5`` of the newest ``run_to_sample``. Otherwise
+        ``None``, as the run has its own monitor.
+
+    Raises
+    ------
+    FileNotFoundError
+        If a run from the sample finds no ``run_to_sample``.
+    """
     folder = Path(folder)
     if not folder.name.endswith("_from_sample"):
         return None
     return latest_run(output_dir or folder.parent, "*_run_to_sample") / "mccode.h5"
 
 
-def clean_runs(output_dir=None, keep=5):
-    """Remove all but the `keep` newest finished runs of `output_dir` (None for
-    `default_output_dir()`), and return the removed folders.
+def clean_runs(output_dir: str | Path | None = None, keep: int = 5) -> list[Path]:
+    """Remove all but the newest finished runs.
 
     Never removed, whatever their age:
-    - a `run_to_sample` run (any folder with a `beam.mcpl.gz`, whatever its name): its beam file
-      is the expensive simulation every `run_from_sample` and `scan_from_sample` starts from, and
-      its `mccode.h5` has the incident monitor that normalizes them. Delete one by hand when it
-      is no longer needed;
-    - a folder without a `mccode.h5` (an unfinished run, or anything else in `output_dir`).
 
-    `run_to_sample` runs count towards `keep`, so fewer other runs may be kept."""
+    - a ``run_to_sample`` run, i.e. any folder with a ``beam.mcpl.gz``. Its beam file is the
+      expensive simulation every ``run_from_sample`` and ``scan_from_sample`` starts from, and
+      its ``mccode.h5`` has the incident monitor that normalizes them. Delete one by hand when
+      it is no longer needed.
+    - a folder without a ``mccode.h5``: an unfinished run, or anything else in ``output_dir``.
+
+    Parameters
+    ----------
+    output_dir:
+        Output folder. If ``None``, :func:`default_output_dir` is used.
+    keep:
+        Number of newest finished runs to keep. ``run_to_sample`` runs count towards it, so
+        fewer other runs may be kept.
+
+    Returns
+    -------
+    :
+        The removed folders.
+    """
     output_dir = Path(output_dir or default_output_dir())
     runs = [output_dir / run for run in list_runs(output_dir)]
     old = [run for run in runs[keep:] if not (run / "beam.mcpl.gz").is_file()]

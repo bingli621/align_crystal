@@ -1,16 +1,18 @@
-"""Simulate an instrument into McStas NeXus (HDF5) output, read with `nexus_io.read_scan`.
+"""Simulate an instrument into McStas NeXus (HDF5) output, read with :func:`.read_scan`.
 
-A `Simulation` holds the instrument to simulate and the folder its runs write to:
+A :class:`Simulation` holds the instrument to simulate and the folder its runs write to. It
+offers:
 
-- `run`: one run, source -> detector;
-- `scan`: a run per value of an instrument parameter, source -> detector, the values in parallel;
-- `run_to_sample`: source -> `sample_pos` once, the beam dumped into an MCPL beam file;
-- `run_from_sample`: one run from that beam file, `sample_pos` -> detector;
-- `scan_from_sample`: a run per value from that beam file, the values in parallel.
+- ``run``: one run, source -> detector;
+- ``scan``: one run per value of an instrument parameter, source -> detector, in parallel;
+- ``run_to_sample``: source -> ``sample_pos`` once, the beam dumped into an MCPL beam file;
+- ``run_from_sample``: one run from that beam file, ``sample_pos`` -> detector;
+- ``scan_from_sample``: one run per value from that beam file, in parallel.
 
-Everything runs through McStasScript's public API (`settings`, `set_parameters`, `run_to`,
-`run_from`, `backengine`); a scan is a `backengine` per value, merged into one file, after
-compiling the instrument once with mcrun itself (McStasScript has no compile-only call).
+Everything runs through McStasScript's public API (``settings``, ``set_parameters``,
+``run_to``, ``run_from``, ``backengine``). A scan runs ``backengine`` once per value and merges
+the outputs into one file. The instrument is first compiled once with mcrun itself, since
+McStasScript has no compile-only call.
 """
 
 import copy
@@ -18,21 +20,36 @@ import os
 import shlex
 import shutil
 import subprocess
+from collections.abc import Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
+from numpy.typing import ArrayLike
 
 from mcstas_to_sqe.mcstas.builder import build_mcstas, default_input_dir
 from mcstas_to_sqe.mcstas.nexus_io import merge_entries
 from mcstas_to_sqe.mcstas.run_folders import default_output_dir, latest_beam, run_folder
 
+if TYPE_CHECKING:
+    from mcstasscript.interface.instr import McStas_instr
 
-def _compile(inst):
-    """Write `inst` into its input folder and compile it there, without simulating: mcrun
-    compiles (-c), then the instrument only prints its info (--info), so not even a beam file
-    is read. The compile flags are the ones of `inst`'s settings (NeXus, OpenACC, custom flags),
-    so its runs reuse the executable. Raises RuntimeError with mcrun's output if that fails."""
+    from mcstas_to_sqe.core import Instrument
+
+
+def _compile(inst: "McStas_instr") -> None:
+    """Write the instrument into its input folder and compile it there, without simulating.
+
+    mcrun compiles (``-c``), then the instrument only prints its info (``--info``), so not even a
+    beam file is read. The compile flags are those of ``inst``'s settings (NeXus, OpenACC,
+    custom flags), so its runs reuse the executable.
+
+    Raises
+    ------
+    RuntimeError
+        With mcrun's output, if compiling fails.
+    """
     inst.write_full_instrument()
     options = inst._run_settings  # McStasScript keeps them private
     mcrun = Path(options.get("executable_path", "")) / options.get("executable", "mcrun")
@@ -49,19 +66,44 @@ def _compile(inst):
         raise RuntimeError(f"compiling {inst.name} failed:\n{process.stdout}{process.stderr}")
 
 
-def _run_points_in_parallel(inst, output_path, points, seed=None, n_jobs: int | None = None):
-    """Run `inst` once per point (instrument parameter values, McStas name -> value), `n_jobs`
-    at a time (None: all cores), and merge the outputs into `output_path/mccode.h5`, an entry
-    per point in the order of `points`, which is returned.
+def _run_points_in_parallel(
+    inst: "McStas_instr",
+    output_path: Path,
+    points: Sequence[Mapping[str, float]],
+    seed: int | None = None,
+    n_jobs: int | None = None,
+) -> Path:
+    """Run the instrument once per point and merge the outputs into one scan file.
 
-    Each point runs a copy of `inst`, with its own values, output folder and random seed (`seed`
-    + index, default: a random `seed`), so the runs do not repeat each other's random numbers.
-    The instrument is written and compiled once, first, without simulating; then every point
-    reuses it, in parallel.
+    The instrument is written and compiled once, first, without simulating. Then every point
+    runs a copy of ``inst`` in parallel, with its own values, output folder and random seed.
 
-    A point that fails raises RuntimeError naming it, once the points already running are done;
-    the points not started yet are not run, and the folder of every point is kept in
-    `output_path`. Raises ValueError, before anything, if there are no points.
+    Parameters
+    ----------
+    inst:
+        The McStasScript instrument, with its settings.
+    output_path:
+        Folder to create for the scan.
+    points:
+        Instrument parameter values (by McStas name) of each point.
+    seed:
+        Seed of the first point; point ``n`` gets ``seed + n + 1``, so the runs do not repeat
+        each other's random numbers. If ``None``, a random seed.
+    n_jobs:
+        Number of points run at a time. If ``None``, the number of cores.
+
+    Returns
+    -------
+    :
+        ``output_path/mccode.h5``, with one entry per point in the order of ``points``.
+
+    Raises
+    ------
+    ValueError
+        If there are no points, before anything runs.
+    RuntimeError
+        Naming the point that failed, once the points already running are done. Points not
+        started yet are not run, and every point's folder is kept in ``output_path``.
     """
     if not points:
         raise ValueError("a scan needs at least one point")
@@ -82,7 +124,7 @@ def _run_points_in_parallel(inst, output_path, points, seed=None, n_jobs: int | 
         run.set_parameters(**values)
         runs.append(run)
 
-    def run_point(n):
+    def run_point(n: int) -> None:
         try:
             runs[n].backengine()  # a separate mcrun process
         except Exception as error:
@@ -102,37 +144,63 @@ def _run_points_in_parallel(inst, output_path, points, seed=None, n_jobs: int | 
 
 
 class Simulation:
-    """Runs of `instrument` (e.g. a `SingleCrystalDiffractometer`), each into a new folder of
-    `output_dir`, named by its start time and mode: `<time>_run`, `<time>_scan_<variable>`,
-    `<time>_run_to_sample`, `<time>_run_from_sample` and `<time>_scan_<variable>_from_sample`,
-    with `<time>` e.g. `20261022-143005`. A `folder_name` gives the folder instead, which is then
-    replaced on every run. `run_folders.clean_runs` removes the older runs, never a
-    `run_to_sample` one. Every run builds the instrument anew, into `input_dir`, so a change to
-    it applies to the next run.
+    """Run McStas simulations of an instrument.
 
-    Both folders are in `work_dir` (None for `default_work_dir()`: the current folder, or
-    MCSTAS_TO_SQE_WORKDIR), fixed when the simulation is created: `mcstas_output/` and
-    `mcstas_input/<instrument name>/`. `output_dir` and `input_dir` put either elsewhere.
+    Every run builds the instrument anew, into ``input_dir``, so a change to the instrument
+    applies to the next run.
 
-    `instr_params` of a run are its instrument parameters, by McStas name: omega, chi, phi (deg;
-    the instrument's unless given), and the `wavelength` (angstrom; the one of the instrument's
-    ei unless given). A scan gives its `variable`, one of them, a run per value of `values`, all
-    into one `mccode.h5` with an entry per value (`entry1`, `entry2`, ... in their order).
+    Parameters
+    ----------
+    instrument:
+        The instrument to simulate, e.g. a ``SingleCrystalDiffractometer``.
+    output_dir:
+        Folder for the run folders. If ``None``, ``work_dir/mcstas_output``.
+    input_dir:
+        Folder for the McStas files. If ``None``, ``work_dir/mcstas_input/<instrument name>``.
+    work_dir:
+        Work folder for the defaults above, fixed when the simulation is created. If ``None``,
+        :func:`.default_work_dir`: ``MCSTAS_TO_SQE_WORKDIR`` or the current folder.
 
-    `beam_file` is the beam file the runs from the sample start from: the one of the last
-    `run_to_sample`, else the newest `beam.mcpl.gz` in `output_dir`, so a beam dumped in an earlier
-    session is found (None if there is none).
+    Attributes
+    ----------
+    beam_file:
+        Beam file the runs from the sample start from: that of the last :meth:`run_to_sample`,
+        else the newest ``beam.mcpl.gz`` in ``output_dir``, so a beam dumped in an earlier
+        session is found. ``None`` if there is none.
+
+    Notes
+    -----
+    Each run writes into a new folder of ``output_dir``, named by its start time and mode:
+    ``<time>_run``, ``<time>_scan_<variable>``, ``<time>_run_to_sample``,
+    ``<time>_run_from_sample`` and ``<time>_scan_<variable>_from_sample``, with ``<time>`` e.g.
+    ``20261022-143005``. A ``folder_name`` names the folder instead, and it is then replaced on
+    every run. :func:`.clean_runs` removes older runs, never a ``run_to_sample`` one.
+
+    The ``instr_params`` of a run are its instrument parameters by McStas name: ``omega``,
+    ``chi``, ``phi`` (deg) and ``wavelength`` (Å). Those not given keep the instrument's values;
+    the wavelength defaults to that of the instrument's ``ei``.
     """
 
-    def __init__(self, instrument, output_dir=None, input_dir=None, work_dir=None):
+    def __init__(
+        self,
+        instrument: "Instrument",
+        output_dir: str | Path | None = None,
+        input_dir: str | Path | None = None,
+        work_dir: str | Path | None = None,
+    ) -> None:
         self.instrument = instrument
         self.output_dir = Path(output_dir or default_output_dir(work_dir))
         self.input_dir = Path(input_dir or default_input_dir(instrument, work_dir))
         self.beam_file = latest_beam(self.output_dir)
 
-    def _sample_pos_name(self):
-        """The name of the instrument's `sample_pos`, where a split run cuts the beam; an
-        instrument without one raises."""
+    def _sample_pos_name(self) -> str:
+        """Return the name of the instrument's ``sample_pos``, where a split run cuts the beam.
+
+        Raises
+        ------
+        ValueError
+            If the instrument has no ``sample_pos`` component.
+        """
         sample_pos = getattr(self.instrument, "sample_pos", None)
         if sample_pos is None or sample_pos.name not in self.instrument.components:
             raise ValueError(
@@ -140,20 +208,55 @@ class Simulation:
             )
         return sample_pos.name
 
-    def find_beam_file(self, beam_file=None):
-        """The absolute path of the beam file a run from the sample starts from: `beam_file`,
-        or None for the simulation's (`self.beam_file`). Absolute, as mcrun runs in `input_dir`.
+    def find_beam_file(self, beam_file: str | Path | None = None) -> Path:
+        """Return the absolute path of the beam file a run from the sample starts from.
 
-        Raises FileNotFoundError if both are None."""
+        The path is absolute because mcrun runs in ``input_dir``.
+
+        Parameters
+        ----------
+        beam_file:
+            The beam file. If ``None``, :attr:`beam_file`.
+
+        Returns
+        -------
+        :
+            The absolute path.
+
+        Raises
+        ------
+        FileNotFoundError
+            If both ``beam_file`` and :attr:`beam_file` are ``None``.
+        """
         beam_file = beam_file or self.beam_file
         if beam_file is None:
             raise FileNotFoundError(f"no beam file in {self.output_dir}: run run_to_sample first")
         return Path(beam_file).resolve()
 
-    def get_scan_points(self, variable, values, instr_params):
-        """The points of a scan of `variable` over `values`, one `{**instr_params, variable: value}`
-        each. Every name is checked against the instrument's parameters (KeyError), before any
-        run."""
+    def get_scan_points(
+        self, variable: str, values: ArrayLike, instr_params: Mapping[str, float]
+    ) -> list[dict[str, float]]:
+        """Return the points of a scan.
+
+        Parameters
+        ----------
+        variable:
+            Instrument parameter to scan.
+        values:
+            Values of ``variable``.
+        instr_params:
+            The other instrument parameters, the same for every point.
+
+        Returns
+        -------
+        :
+            ``{**instr_params, variable: value}`` for each value.
+
+        Raises
+        ------
+        KeyError
+            If a name is not an instrument parameter, before any run.
+        """
         names = {p.name for p in self.instrument.instr_params}
         if unknown := sorted({variable, *instr_params} - names):
             raise KeyError(f"no instrument parameter {unknown}, only {sorted(names)}")
@@ -162,11 +265,36 @@ class Simulation:
         ]
 
     def run(
-        self, folder_name=None, ncount=1e7, seed=None, mpi="auto", custom_flags=None, **instr_params
-    ):
-        """Run source -> detector once, with `instr_params`. Output goes to
-        `output_dir/<time>_run/mccode.h5` (or `folder_name/`), which is returned. `custom_flags`
-        is passed to mcrun."""
+        self,
+        folder_name: str | None = None,
+        ncount: float = 1e7,
+        seed: int | None = None,
+        mpi: int | str = "auto",
+        custom_flags: str | None = None,
+        **instr_params: float,
+    ) -> Path:
+        """Simulate source -> detector once.
+
+        Parameters
+        ----------
+        folder_name:
+            Run folder name. If ``None``, ``<time>_run``.
+        ncount:
+            Number of neutrons.
+        seed:
+            Random seed. If ``None``, McStas picks one.
+        mpi:
+            Number of MPI processes, or ``"auto"``.
+        custom_flags:
+            Extra flags for mcrun.
+        **instr_params:
+            Instrument parameters by McStas name.
+
+        Returns
+        -------
+        :
+            ``output_dir/<folder>/mccode.h5``.
+        """
         output_path = run_folder(self.output_dir, folder_name, "run")
         inst = build_mcstas(self.instrument, input_path=self.input_dir)
         inst.settings(
@@ -186,21 +314,49 @@ class Simulation:
 
     def scan(
         self,
-        variable,
-        values,
-        folder_name=None,
-        ncount=1e7,
-        n_jobs=None,
-        seed=None,
-        custom_flags=None,
-        **instr_params,
-    ):
-        """Run source -> detector for every value of `variable` (e.g. "omega",
-        np.linspace(-48, 83, 11)), the values in parallel (`n_jobs` single-process mcrun jobs at
-        a time, default: all cores); the other instrument parameters are `instr_params`. Returns
-        `output_dir/<time>_scan_<variable>/mccode.h5` (or `folder_name/`), an entry per value.
-        Each value gets its own random seed (`seed` + index), so the jobs do not repeat each
-        other's random numbers."""
+        variable: str,
+        values: ArrayLike,
+        folder_name: str | None = None,
+        ncount: float = 1e7,
+        n_jobs: int | None = None,
+        seed: int | None = None,
+        custom_flags: str | None = None,
+        **instr_params: float,
+    ) -> Path:
+        """Simulate source -> detector for every value of an instrument parameter.
+
+        The values run in parallel as single-process mcrun jobs.
+
+        Parameters
+        ----------
+        variable:
+            Instrument parameter to scan, e.g. ``"omega"``.
+        values:
+            Values of ``variable``, e.g. ``np.linspace(-48, 83, 11)``.
+        folder_name:
+            Run folder name. If ``None``, ``<time>_scan_<variable>``.
+        ncount:
+            Number of neutrons per value.
+        n_jobs:
+            Number of jobs at a time. If ``None``, the number of cores.
+        seed:
+            Random seed; value ``n`` gets ``seed + n + 1``, so the jobs do not repeat each
+            other's random numbers. If ``None``, a random seed.
+        custom_flags:
+            Extra flags for mcrun.
+        **instr_params:
+            The other instrument parameters by McStas name.
+
+        Returns
+        -------
+        :
+            ``output_dir/<folder>/mccode.h5``, with one entry per value.
+
+        Raises
+        ------
+        KeyError
+            If a name is not an instrument parameter, before anything runs.
+        """
         points = self.get_scan_points(variable, values, instr_params)  # checked before anything
         output_path = run_folder(self.output_dir, folder_name, f"scan_{variable}")
         inst = build_mcstas(self.instrument, input_path=self.input_dir)
@@ -216,15 +372,41 @@ class Simulation:
 
         return _run_points_in_parallel(inst, output_path, points, seed=seed, n_jobs=n_jobs)
 
-    def run_to_sample(self, folder_name=None, ncount=1e8, mpi="auto", **instr_params):
-        """Part 1 of a split run: simulate source -> slit -> incident monitor -> `sample_pos` and
-        dump the beam to an MCPL file. Run it once with a large `ncount`. Returns the path of the
-        beam file (`output_dir/<time>_run_to_sample/beam.mcpl.gz`, or `folder_name/`), which becomes
-        `beam_file`; the folder also has `mccode.h5` with the incident monitor.
+    def run_to_sample(
+        self,
+        folder_name: str | None = None,
+        ncount: float = 1e8,
+        mpi: int | str = "auto",
+        **instr_params: float,
+    ) -> Path:
+        """Simulate source -> ``sample_pos`` and dump the beam to an MCPL file.
 
-        The beam file only fits instruments with the same source and beam geometry, and the same
-        wavelength, so make a new one if you change the instrument's ei, source, slit or monitor
-        settings.
+        This is part 1 of a split run: run it once, with a large ``ncount``. The run folder also
+        holds a ``mccode.h5`` with the incident monitor.
+
+        The beam file only fits instruments with the same source, beam geometry and wavelength.
+        Make a new one after changing the instrument's ``ei``, source, slit or monitor.
+
+        Parameters
+        ----------
+        folder_name:
+            Run folder name. If ``None``, ``<time>_run_to_sample``.
+        ncount:
+            Number of neutrons.
+        mpi:
+            Number of MPI processes, or ``"auto"``.
+        **instr_params:
+            Instrument parameters by McStas name.
+
+        Returns
+        -------
+        :
+            ``output_dir/<folder>/beam.mcpl.gz``, which also becomes :attr:`beam_file`.
+
+        Raises
+        ------
+        ValueError
+            If the instrument has no ``sample_pos``, before anything runs.
         """
         sample_pos = self._sample_pos_name()  # checked before anything
         output_path = run_folder(self.output_dir, folder_name, "run_to_sample")
@@ -249,12 +431,41 @@ class Simulation:
         self.beam_file = output_path / "beam.mcpl.gz"
         return self.beam_file
 
-    def run_from_sample(self, folder_name=None, beam_file=None, seed=None, **instr_params):
-        """Part 2 of a split run, any time later (even in another session): simulate
-        `sample_pos` -> sample -> detector once, starting from `beam_file` (default: the
-        simulation's), with `instr_params`; the wavelength must be the one of the beam file.
-        Returns `output_dir/<time>_run_from_sample/mccode.h5` (or `folder_name/`). The number
-        of neutrons is the number in the beam file."""
+    def run_from_sample(
+        self,
+        folder_name: str | None = None,
+        beam_file: str | Path | None = None,
+        seed: int | None = None,
+        **instr_params: float,
+    ) -> Path:
+        """Simulate ``sample_pos`` -> sample -> detector once, from a beam file.
+
+        This is part 2 of a split run, and may run any time later, even in another session. The
+        number of neutrons is the number in the beam file.
+
+        Parameters
+        ----------
+        folder_name:
+            Run folder name. If ``None``, ``<time>_run_from_sample``.
+        beam_file:
+            Beam file to start from. If ``None``, :attr:`beam_file`.
+        seed:
+            Random seed. If ``None``, McStas picks one.
+        **instr_params:
+            Instrument parameters by McStas name. The wavelength must be that of the beam file.
+
+        Returns
+        -------
+        :
+            ``output_dir/<folder>/mccode.h5``.
+
+        Raises
+        ------
+        ValueError
+            If the instrument has no ``sample_pos``, before anything runs.
+        FileNotFoundError
+            If there is no beam file, before anything runs.
+        """
         sample_pos = self._sample_pos_name()  # checked before anything
         beam_file = self.find_beam_file(beam_file)
         output_path = run_folder(self.output_dir, folder_name, "run_from_sample")
@@ -276,21 +487,51 @@ class Simulation:
 
     def scan_from_sample(
         self,
-        variable,
-        values,
-        folder_name=None,
-        beam_file=None,
-        n_jobs=None,
-        seed=None,
-        **instr_params,
-    ):
-        """Part 2 of a split run for every value of `variable` (e.g. "omega", range(-48, 83)),
-        all starting from `beam_file` (default: the simulation's), the values in parallel
-        (`n_jobs` single-process mcrun jobs at a time, default: all cores); the other instrument
-        parameters are `instr_params`. Returns
-        `output_dir/<time>_scan_<variable>_from_sample/mccode.h5` (or `folder_name/`), an entry per
-        value. Each value gets its own random seed (`seed` + index), so the jobs do not repeat each
-        other's random numbers."""
+        variable: str,
+        values: ArrayLike,
+        folder_name: str | None = None,
+        beam_file: str | Path | None = None,
+        n_jobs: int | None = None,
+        seed: int | None = None,
+        **instr_params: float,
+    ) -> Path:
+        """Simulate ``sample_pos`` -> detector from a beam file, for every value of a parameter.
+
+        This is part 2 of a split run, for a scan. The values run in parallel as single-process
+        mcrun jobs, all starting from the same beam file.
+
+        Parameters
+        ----------
+        variable:
+            Instrument parameter to scan, e.g. ``"omega"``.
+        values:
+            Values of ``variable``, e.g. ``range(-48, 83)``.
+        folder_name:
+            Run folder name. If ``None``, ``<time>_scan_<variable>_from_sample``.
+        beam_file:
+            Beam file to start from. If ``None``, :attr:`beam_file`.
+        n_jobs:
+            Number of jobs at a time. If ``None``, the number of cores.
+        seed:
+            Random seed; value ``n`` gets ``seed + n + 1``, so the jobs do not repeat each
+            other's random numbers. If ``None``, a random seed.
+        **instr_params:
+            The other instrument parameters by McStas name.
+
+        Returns
+        -------
+        :
+            ``output_dir/<folder>/mccode.h5``, with one entry per value.
+
+        Raises
+        ------
+        KeyError
+            If a name is not an instrument parameter, before anything runs.
+        ValueError
+            If the instrument has no ``sample_pos``, before anything runs.
+        FileNotFoundError
+            If there is no beam file, before anything runs.
+        """
         points = self.get_scan_points(variable, values, instr_params)  # checked before anything
         sample_pos = self._sample_pos_name()
         beam_file = self.find_beam_file(beam_file)

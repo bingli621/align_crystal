@@ -1,10 +1,4 @@
-"""The single-crystal diffractometer.
-
-scd.py             SingleCrystalDiffractometer(sample, params), an Instrument: makes its own
-                   components around the sample; its control parameters Params, DEFAULT_PARAMS;
-                   instr_params: the wavelength of ei, and the goniometer angles
-params.yaml        its default saved (PARAMS_FILE): a reference of how a parameters file looks
-"""
+"""The single-crystal diffractometer, and its default saved as params.yaml (PARAMS_FILE)."""
 
 from pathlib import Path
 

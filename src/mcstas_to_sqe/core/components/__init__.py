@@ -7,19 +7,6 @@ through ``mcstas_parameters`` (its fields plus anything it computes), but import
 A value that follows from a component's own values is a property computed when used, such as the
 crystal's reciprocal vectors. A value that depends on other components, such as the positions, is
 left to the instrument.
-
-Modules
--------
-base
-    The base class :class:`Component`.
-misc
-    The simple components: ``Progress_bar``, ``Slit``, ``Arm``.
-source
-    ``Source_simple``.
-detector
-    ``Monitor``, ``Monitor_nD``.
-crystal
-    ``Single_crystal``. Ready-made crystals are in samples/.
 """
 
 from .base import Component

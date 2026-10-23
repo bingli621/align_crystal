@@ -17,6 +17,9 @@ An omega scan over 132 points of La2Ni7, in momentum transfer, normalized
 
 ## Layout
 
+The one description of the package layout: the package docstrings say what each package is, not
+what is in it.
+
 ```
 src/mcstas_to_sqe/   the library (installed)
   core/             the entities any instrument shares: an instrument is a set of components (no
@@ -42,7 +45,8 @@ src/mcstas_to_sqe/   the library (installed)
   samples/          the ready-made samples aluminum, la2ni7, for any instrument (in __init__.py,
                     which says how to add one), with their CIF files (La2Ni7.cif)
   io/           files of the instrument (an adapter around the entities)
-    dict_io.py        to_dict, from_dict: any instrument to and from its nested dict; from_overrides
+    dict_io.py        to_dict, from_dict: any instrument to and from its nested dict; from_overrides:
+                      the default instrument with only what differs laid over it; merge
     yaml_io.py        the only module that knows YAML: load(path, **kwargs), save(instrument,
                       path); read_yaml, write_yaml
   mcstas/       everything that talks to McStas
@@ -57,7 +61,7 @@ src/mcstas_to_sqe/   the library (installed)
   plot/         pictures of any instrument (an adapter around the entities)
     top_view.py       top_view_svg(instrument, path): seen from above, its rotation axes (from
                       the components' `rotated`) numbered outermost first with the way each turns;
-                      SHAPES: how each type of component is drawn
+                      rotation_axes; SHAPES: how each type of component is drawn
   reduction/    to_Q, to_sample_frame, solid-angle normalization, find_peaks
 scripts/        work_dir.py (their folders), build_instrument.py, run_mcstas.py, plot_scan_2d.py, plot_scan_Q.py (gifs), print_peaks.py
 tests/
@@ -69,8 +73,8 @@ output/         figures and peak lists made from the results
 Dependencies point inwards (clean architecture): `core` holds the entities any instrument
 shares and imports nothing from the outer layers; `instruments` (each instrument) and `samples` (the
 ready-made samples, placed by the caller with `relative`) build on it. Around it are adapters: `io` converts any instrument
-to and from its nested dict and YAML files, `mcstas` simulates a `SingleCrystalDiffractometer` that the caller creates;
-the sample is the diffractometer's `sample` (a `Single_crystal`, optional); `reduction` reads the McStas output with `mcstas.nexus_io`.
+to and from its nested dict and YAML files, `mcstas` builds and simulates
+any instrument that the caller creates, `plot` draws any instrument, and `reduction` reads the McStas output with `mcstas.nexus_io`.
 
 ## Configuration
 

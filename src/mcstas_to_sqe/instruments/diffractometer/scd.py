@@ -1,15 +1,15 @@
-"""The single-crystal diffractometer: source -> slit -> incident monitor -> goniometer (three
-nested arms) + sample -> detector.
+"""The single-crystal diffractometer.
 
-`SingleCrystalDiffractometer(sample, params)`, an `Instrument` (core/base.py: what every
-instrument shares), makes its own components (the defaults, set in `__init__`; lengths in m, angles
-in deg) around the `sample`. Its control parameters are `Params` (here: `ei` and the goniometer
-angles); the instrument parameters McStas gets (`instr_params`: the wavelength of `ei`,
-and the angles) are calculated from them when used.
+Beam path: source -> slit -> incident monitor -> goniometer (three nested arms) with the
+sample -> detector.
 
-It knows no dicts or files: io/ converts it to and from its nested dict and a YAML file (which
-names it `SingleCrystalDiffractometer`). No McStas knowledge: mcstas/builder.py builds the McStas
-instrument from it.
+:class:`SingleCrystalDiffractometer` creates its default components around a given sample
+(lengths in m, angles in deg). Its control parameters are :class:`Params`: ``ei`` and the
+goniometer angles. The McStas instrument parameters (``instr_params``: the wavelength of ``ei``,
+and the angles) are computed from them when used.
+
+The instrument knows no dicts, files or McStas: io/ converts it to and from its nested dict and
+a YAML file, and mcstas/builder.py builds the McStas instrument from it.
 """
 
 from dataclasses import dataclass
@@ -30,9 +30,22 @@ from mcstas_to_sqe.core.params import InstrParam, param
 
 @dataclass(frozen=True)
 class Params:
-    """The control parameters of the diffractometer: what you set on it. Frozen: change them with
-    `SingleCrystalDiffractometer.update_params`. Each field's `unit` and `comment` are in its
-    metadata."""
+    """Control parameters of the diffractometer.
+
+    Frozen: change them with ``SingleCrystalDiffractometer.update_params``. Each field's unit and
+    comment are in its metadata.
+
+    Parameters
+    ----------
+    ei:
+        Incident energy in meV.
+    omega:
+        Goniometer rotation about +y, in deg.
+    chi:
+        Goniometer rotation about -z, in deg.
+    phi:
+        Goniometer rotation about +x, in deg.
+    """
 
     ei: float = param(14.0, "meV", "incident energy")
     omega: float = param(0.0, "deg", "goniometer rotation about +Y")
@@ -44,8 +57,18 @@ DEFAULT_PARAMS = Params()  # frozen, so one shared default is safe
 
 
 class SingleCrystalDiffractometer(Instrument):
-    """The single-crystal diffractometer (see `Instrument`): its components, and its params
-    (`Params`: `ei`, `omega`, `chi`, `phi`), from which follow its instrument parameters."""
+    """The single-crystal diffractometer, with its default components.
+
+    Lengths are in m and angles in deg. A run may give its own goniometer angles.
+
+    Parameters
+    ----------
+    sample:
+        The sample, e.g. ``la2ni7(at=[0, 0, 0], relative="gonio_phi")`` from samples/.
+        If ``None``, there is no sample.
+    params:
+        Control parameters, e.g. ``Params(ei=25, omega=30)``.
+    """
 
     params_class = Params
     name = "scd"  # the McStas instrument name
@@ -62,10 +85,9 @@ class SingleCrystalDiffractometer(Instrument):
     sample: Single_crystal | None
     detector: Monitor_nD
 
-    def __init__(self, sample: Single_crystal | None = None, params: Params = DEFAULT_PARAMS):
-        """The default diffractometer (lengths in m, angles in deg) around `sample` (e.g.
-        `la2ni7(at=[0, 0, 0], relative="gonio_phi")` from samples/; None: none), with its control parameters
-        `params` (e.g. `Params(ei=25, omega=30)`; a run may give its own angles)."""
+    def __init__(
+        self, sample: Single_crystal | None = None, params: Params = DEFAULT_PARAMS
+    ) -> None:
         super().__init__(params)
         self.origin = Progress_bar(at=[0, 0, 0])
         self.source = Source_simple(
@@ -109,8 +131,7 @@ class SingleCrystalDiffractometer(Instrument):
 
     @property
     def instr_params(self) -> list[InstrParam]:
-        """The instrument parameters (McStas instrument parameters), from the params: the
-        wavelength of `ei`, and the goniometer angles."""
+        """McStas instrument parameters: the wavelength of ``ei``, and the goniometer angles."""
         p = self._params
         wavelength = Source_simple.wavelength_from_ei(p.ei)
         return [
@@ -121,9 +142,21 @@ class SingleCrystalDiffractometer(Instrument):
         ]
 
     def plot_top_view(self, path: str | Path | None = None) -> str:
-        """Its top view, at its angles, as an SVG (plot/top_view.py: `top_view_svg`): the
-        goniometer axes numbered outermost first (1 omega, 2 chi, 3 phi), each with the way it
-        turns. Saved to `path` (None: not saved); returns the SVG text."""
+        """Draw the top view at the current angles, as SVG.
+
+        The goniometer axes are numbered outermost first (1 omega, 2 chi, 3 phi), each with its
+        sense of rotation. See :func:`.top_view_svg`.
+
+        Parameters
+        ----------
+        path:
+            File to save the SVG to. If ``None``, it is not saved.
+
+        Returns
+        -------
+        :
+            The SVG text.
+        """
         from mcstas_to_sqe.plot import top_view_svg  # only when drawn: importing does not need it
 
         return top_view_svg(self, path)

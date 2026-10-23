@@ -1,4 +1,4 @@
-"""The single-crystal diffractometer, and its default saved as params.yaml (PARAMS_FILE)."""
+"""The single-crystal diffractometer, and its default saved as params.yaml (``PARAMS_FILE``)."""
 
 from pathlib import Path
 

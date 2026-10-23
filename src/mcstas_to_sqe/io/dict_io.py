@@ -1,17 +1,24 @@
-"""An instrument to and from its nested dict: what a parameters file holds, in any format.
+"""Convert an instrument to and from its nested dict: what a parameters file holds, in any format.
 
-Any `Instrument` (core/base.py): the dict names its class (`instrument`, a key of
-INSTRUMENTS), its params are those of the class's `params_class`, its components its own. Every
-dict, complete or of overrides, must name a class of INSTRUMENTS: there is no default, and a
-missing or unknown one raises ValueError. The dict, here of the diffractometer, in the layout of
-its params.yaml (instruments/diffractometer/):
+The dict names the instrument class (``instrument``, a key of ``INSTRUMENTS``). Its ``params``
+are those of the class's ``params_class``, and every other key is a component section.
+
+- :func:`to_dict`: the complete dict of an instrument.
+- :func:`from_dict`: the instrument of a complete dict, of the class it names.
+- :func:`from_overrides`: the default instrument of the class a dict names, with the dict's
+  values laid over it. This is what a parameters file holds.
+- :func:`merge`: how one dict is laid over another.
+
+Every dict, complete or of overrides, must name an instrument class: there is no default.
+
+Layout, for the diffractometer as in its params.yaml (instruments/diffractometer/)::
 
     instrument: SingleCrystalDiffractometer   # the class: a key of INSTRUMENTS
     name: scd
     params:                   # each param: its value, unit and comment (its field's metadata)
       ei: {value: 14.0, unit: meV, comment: incident energy}
       ...
-    slit:                     # one section per component, in the order of the beam
+    slit:                     # one section per component, in beam order
       component: Slit         # the McStas component (the class of the same name)
       xwidth: 0.01            # its own parameters
       yheight: 0.01
@@ -21,24 +28,21 @@ its params.yaml (instruments/diffractometer/):
       position: [0.0, 0.0, 1.0]   # in the lab frame: written for reading, never read back
     ...
 
-A param's unit, if given, must be its unit in the code; its comment is only for reading; a bare
-number stands for its value (`ei: 25` is `ei: {value: 25}`). A component value that an instrument
-parameter gives is the parameter's name, as in McStas (`rotated: [0, omega, 0]`).
+Rules:
 
-What a dict gets wrong raises ValueError, saying where: `instrument: ...`, `params.ei: ...`,
-`slit: ...` (an unknown or missing instrument class, an unknown param, unit, component class or
-component parameter).
+- A param's unit, if given, must match its unit in the code. Its comment is only for reading.
+- A bare number stands for the value: ``ei: 25`` is ``ei: {value: 25}``.
+- A component value that an instrument parameter provides is the parameter's name, as in McStas
+  (``rotated: [0, omega, 0]``).
 
-to_dict(instrument)                  the complete dict of an instrument
-from_dict(data)                      the instrument of a complete dict, of the class it names
-from_overrides(overrides, **kwargs)  the default instrument of the class `overrides` names (made
-                                     with `kwargs`), with `overrides`, only what differs, laid over
-                                     it: what a parameters file holds
-merge(defaults, overrides)           how a dict is laid over another
+Errors raise ``ValueError`` saying where: ``instrument: ...``, ``params.ei: ...``,
+``slit: ...``. They cover an unknown or missing instrument class, and an unknown param, unit,
+component class or component parameter.
 """
 
 import copy
 from dataclasses import asdict, fields
+from typing import Any
 
 from mcstas_to_sqe import instruments  # noqa: F401  (adds every instrument to INSTRUMENTS)
 from mcstas_to_sqe.core import INSTRUMENTS, Instrument
@@ -46,9 +50,19 @@ from mcstas_to_sqe.core.components import COMPONENTS
 
 
 def to_dict(instrument: Instrument) -> dict:
-    """The complete nested dict of `instrument`, the one `from_dict` takes: its class
-    (`instrument`), its `name`, its `params` and one section per component (see
-    `_components_to_dict`)."""
+    """Convert an instrument to its complete nested dict.
+
+    Parameters
+    ----------
+    instrument:
+        The instrument.
+
+    Returns
+    -------
+    :
+        The class name (``instrument``), ``name``, ``params`` and one section per component,
+        as :func:`from_dict` takes it.
+    """
     return {
         "instrument": type(instrument).__name__,
         "name": instrument.name,
@@ -58,11 +72,29 @@ def to_dict(instrument: Instrument) -> dict:
 
 
 def from_dict(data: dict) -> Instrument:
-    """The instrument of the complete nested dict `data` (as `to_dict` gives), of the class its
-    `instrument` names (see `_instrument_class`). The order of its sections does not matter: the
-    instrument is made with its `params` alone, and each section then replaces the component of
-    its name, in that component's place in the beam (a component the class leaves at None, as the
-    diffractometer's sample with none, has its place kept)."""
+    """Create an instrument from its complete nested dict.
+
+    The order of the sections does not matter. The instrument is created with ``params`` alone,
+    and each section then replaces the component of its name, in that component's place in the
+    beam. A component the class leaves at ``None``, such as the diffractometer's sample when
+    there is none, keeps its place too.
+
+    Parameters
+    ----------
+    data:
+        The complete dict, as :func:`to_dict` returns it. ``data`` is not changed.
+
+    Returns
+    -------
+    :
+        An instrument of the class ``data["instrument"]`` names.
+
+    Raises
+    ------
+    ValueError
+        If the class, a param, a unit, a component class or a component parameter is unknown
+        or missing.
+    """
     instrument_class = _instrument_class(data)
     data = copy.deepcopy(data)  # the components get its lists: not shared with the caller
     params = _params_from_dict(data["params"], instrument_class.params_class)
@@ -73,27 +105,65 @@ def from_dict(data: dict) -> Instrument:
     return instrument
 
 
-def from_overrides(overrides: dict, **kwargs) -> Instrument:
-    """The default instrument of the class `overrides` names (see `_instrument_class`), made with
-    `kwargs` (for the diffractometer: `sample`, `params`), with `overrides` laid over its dict
-    (`merge`): a value in `overrides` wins; one it leaves out or sets to None keeps the default.
-    `overrides` names the instrument and holds only what differs, e.g.
-    `{"instrument": "SingleCrystalDiffractometer", "params": {"omega": 30}}`; `from_dict` takes a
-    complete dict instead."""
+def from_overrides(overrides: dict, **kwargs: Any) -> Instrument:
+    """Create the default instrument of a class, with overrides laid over it.
+
+    A value in ``overrides`` wins. A key it leaves out or sets to ``None`` keeps the default
+    (see :func:`merge`). Use :func:`from_dict` for a complete dict instead.
+
+    Parameters
+    ----------
+    overrides:
+        Names the instrument class and holds only what differs, e.g.
+        ``{"instrument": "SingleCrystalDiffractometer", "params": {"omega": 30}}``.
+    **kwargs:
+        Passed to the class to create the default instrument; for the diffractometer,
+        ``sample`` and ``params``.
+
+    Returns
+    -------
+    :
+        The instrument.
+
+    Raises
+    ------
+    ValueError
+        As :func:`from_dict`.
+    """
     instrument_class = _instrument_class(overrides)
     defaults = to_dict(instrument_class(**kwargs))  # names the class: from_dict follows it
     return from_dict(merge(defaults, overrides))
 
 
 def merge(defaults: dict, overrides: dict) -> dict:
-    """A copy of `defaults` with `overrides` laid over it; neither is changed. For each key of
-    `overrides`:
+    """Lay one nested dict over another.
 
-    - a dict over a dict: merged the same way, key by key;
-    - None (null in a file): the default is kept (None is stored only for a key `defaults` lacks);
-    - anything else, a list included: replaces the default whole.
+    For each key of ``overrides``:
 
-    A key that `overrides` leaves out keeps its default."""
+    - a dict over a dict is merged the same way, key by key;
+    - ``None`` (null in a file) keeps the default. It is stored only for a key ``defaults``
+      lacks;
+    - anything else, a list included, replaces the default whole.
+
+    A key that ``overrides`` leaves out keeps its default.
+
+    Parameters
+    ----------
+    defaults:
+        The dict to lay over. Not changed.
+    overrides:
+        The dict laid over it. Not changed.
+
+    Returns
+    -------
+    :
+        A new merged dict.
+
+    Examples
+    --------
+    >>> merge({"a": 1, "b": {"c": 2, "d": 3}}, {"b": {"c": 5}, "a": None})
+    {'a': 1, 'b': {'c': 5, 'd': 3}}
+    """
     merged = copy.deepcopy(defaults)
     for key, override in overrides.items():
         default = merged.get(key)
@@ -105,8 +175,13 @@ def merge(defaults: dict, overrides: dict) -> dict:
 
 
 def _instrument_class(data: dict) -> type[Instrument]:
-    """The class that `data`'s `instrument` names: a key of INSTRUMENTS. Raise ValueError if it
-    names none, or one not there."""
+    """Return the class that ``data["instrument"]`` names, a key of ``INSTRUMENTS``.
+
+    Raises
+    ------
+    ValueError
+        If ``data`` names no class, or an unknown one.
+    """
     named = data.get("instrument")
     if named not in INSTRUMENTS:
         raise ValueError(f"instrument: {named!r} is no instrument (known: {sorted(INSTRUMENTS)})")
@@ -116,8 +191,8 @@ def _instrument_class(data: dict) -> type[Instrument]:
 # the params section
 
 
-def _params_to_dict(params) -> dict:
-    """Each param of `params` (a dataclass) as its `value`, `unit` and `comment`."""
+def _params_to_dict(params: Any) -> dict:
+    """Convert a params dataclass to ``{name: {"value", "unit", "comment"}}``."""
     return {
         f.name: {
             "value": getattr(params, f.name),
@@ -128,10 +203,17 @@ def _params_to_dict(params) -> dict:
     }
 
 
-def _params_from_dict(section: dict, params_class: type):
-    """The `params_class` of the params `section` (as `_params_to_dict` gives, or a bare number for
-    a value). Raise ValueError if `section` names a param that `params_class` lacks, or if a
-    param's unit is not its unit in the code; a comment is not read."""
+def _params_from_dict(section: dict, params_class: type) -> Any:
+    """Create a ``params_class`` from a params section.
+
+    An entry is as :func:`_params_to_dict` writes it, or a bare value. A comment is not read.
+
+    Raises
+    ------
+    ValueError
+        If ``section`` names a param that ``params_class`` lacks, or a unit that differs from
+        the param's unit in the code.
+    """
     unknown = set(section) - {f.name for f in fields(params_class)}
     if unknown:
         raise ValueError(f"params: no such param {sorted(unknown)}")
@@ -153,15 +235,16 @@ def _params_from_dict(section: dict, params_class: type):
 
 
 def _components_to_dict(instrument: Instrument) -> dict:
-    """One section per component of `instrument`, keyed by name, in the order of the beam: its
-    `component`, its parameters (unset optional ones left out), `at`, `rotated`, `relative`, and
-    last its `position` in the lab frame (m; with the instrument's params), which
-    `_components_from_dict` ignores.
+    """Convert the components to sections, keyed by name, in beam order.
 
-    The order is changed on purpose: a component's dataclass fields start with `at`, `rotated` and
-    `relative` (from `Component`, its base), but here they come after its own parameters, so a
-    section reads as params.yaml does: what the component is, then where it sits. Only for
-    reading: `from_dict` does not depend on the order."""
+    Each section holds ``component``, the component's parameters (unset optional ones left out),
+    ``at``, ``rotated``, ``relative``, and last its lab-frame ``position`` in m at the
+    instrument's params. :func:`_components_from_dict` ignores ``position``.
+
+    The placement comes after the component's own parameters on purpose, although the dataclass
+    fields start with it (from ``Component``). That way a section reads as params.yaml does:
+    what the component is, then where it sits. :func:`from_dict` does not depend on the order.
+    """
     positions = instrument.positions()
     sections = {}
     for name, component in instrument.components.items():
@@ -177,10 +260,16 @@ def _components_to_dict(instrument: Instrument) -> dict:
 
 
 def _components_from_dict(data: dict, component_classes: dict = COMPONENTS) -> dict:
-    """The components of `data`, keyed by name, in the order of their sections (every key but
-    `instrument`, `name` and `params`); each is the class its section's `component` names:
-    `component_classes` maps a component name (e.g. "Slit") to its class. Raise ValueError if a
-    section names no such class, or gives a parameter the class does not take."""
+    """Create the components of a dict, keyed by name, in the order of their sections.
+
+    Every key but ``instrument``, ``name`` and ``params`` is a section. Each section's
+    ``component`` names its class in ``component_classes`` (e.g. ``"Slit"``).
+
+    Raises
+    ------
+    ValueError
+        If a section names no known class, or gives a parameter the class does not take.
+    """
     built = {}
     for name, section in data.items():
         if name in ("instrument", "name", "params"):  # the keys that are not components

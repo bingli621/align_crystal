@@ -53,7 +53,4 @@ convention = "numpy"
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["D", "ANN"]
 "scripts/**" = ["D", "ANN"]
-"src/mcstas_to_sqe/instruments/**" = ["D", "ANN"]
-"src/mcstas_to_sqe/io/**" = ["D", "ANN"]
 "src/mcstas_to_sqe/plot/**" = ["D", "ANN"]
-"src/mcstas_to_sqe/samples/**" = ["D", "ANN"]

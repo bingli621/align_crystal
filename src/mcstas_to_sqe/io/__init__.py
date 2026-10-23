@@ -1,6 +1,6 @@
-"""Files of the instrument: an adapter around the entities (core/ imports nothing from here).
+"""Instrument files: an adapter around the entities of core/, which imports nothing from here.
 
-Any instrument (an `Instrument`): a file names its class (`instrument:`), and io/ builds that one.
+A file names its instrument class (``instrument:``), and io/ builds an instrument of that class.
 """
 
 from .dict_io import from_dict, from_overrides, merge, to_dict

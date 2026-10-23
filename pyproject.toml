@@ -39,8 +39,7 @@ testpaths = ["tests"]
 line-length = 100
 
 [tool.ruff.lint]
-# numpydoc docstrings and type hints: core/ follows them; the other subpackages are listed
-# below until they do
+# numpydoc docstrings and type hints, for the package (not the tests and scripts)
 extend-select = ["D", "ANN"]
 ignore = [
     "ANN401",  # Any: params is any params_class, values may be anything
@@ -53,4 +52,3 @@ convention = "numpy"
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["D", "ANN"]
 "scripts/**" = ["D", "ANN"]
-"src/mcstas_to_sqe/plot/**" = ["D", "ANN"]

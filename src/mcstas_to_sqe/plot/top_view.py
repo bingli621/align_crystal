@@ -1,14 +1,19 @@
-"""The top view of any instrument, as an SVG: seen from above (+y), at its angles, the beam along
-+z to the right and +x (left of the beam) up.
+"""Top view of any instrument, as SVG.
 
-Each component is drawn by its type (`SHAPES`: a tick, a dot, an arc, or nothing), one of a type
-not there as a dot; each is labelled with its name. The rotation axes come from the instrument
-itself (`rotation_axes`): every component whose `rotated` names an instrument parameter turns
-about that axis, numbered in the order of the beam (outermost first), each drawn with the way a
-positive angle turns it (right-handed about the axis).
+The view is from above (+y), at the instrument's current angles, with the beam (+z) to the right
+and +x (left of the beam) up.
+
+- Each component is drawn by its type (``SHAPES``: a tick, a dot, an arc, or nothing) and
+  labelled with its name. A type not in ``SHAPES`` is drawn as a dot.
+- The rotation axes come from the instrument itself (:func:`rotation_axes`). Every component
+  whose ``rotated`` names an instrument parameter turns about that axis. The axes are numbered
+  in beam order (outermost first), each drawn with the sense in which a positive angle turns it
+  (right-handed about the axis).
 """
 
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 
@@ -24,6 +29,10 @@ from mcstas_to_sqe.core.components import (
 )
 from mcstas_to_sqe.core.geometry import place_absolute
 
+# a component's shapes, each (kind, lab points); `lab` maps a point of its frame to the lab frame
+Lab = Callable[..., np.ndarray]
+Shapes = list[tuple[str, list[np.ndarray]]]
+
 # the symbol an angle is labelled with, by its instrument parameter (else its name)
 SYMBOLS = {
     "omega": "ω",
@@ -36,20 +45,23 @@ SYMBOLS = {
 }
 
 
-def _nothing(c, lab):
+def _nothing(c: Any, lab: Lab) -> Shapes:
     return []
 
 
-def _tick(c, lab):
+def _tick(c: Any, lab: Lab) -> Shapes:
     return [("tick", [lab()])]
 
 
-def _dot(c, lab):
+def _dot(c: Any, lab: Lab) -> Shapes:
     return [("dot", [lab()])]
 
 
-def _monitor_nd(c, lab):
-    """A banana: its arc (theta signed, negative = right of the beam, -x); else a tick."""
+def _monitor_nd(c: Monitor_nD, lab: Lab) -> Shapes:
+    """Draw a banana detector as its arc, any other ``Monitor_nD`` as a tick.
+
+    theta is signed: negative is right of the beam (-x).
+    """
     if "banana" not in c.options:
         return _tick(c, lab)
     theta = np.radians(np.linspace(*c.theta_limits, 121))
@@ -70,11 +82,25 @@ SHAPES = {
 
 
 def rotation_axes(instrument: Instrument) -> list[tuple[str, str, np.ndarray]]:
-    """Its rotation axes, in the order of the beam (outermost first): each (component name,
-    instrument parameter, axis in the component's own frame), from every `rotated` entry that is
-    an instrument parameter ("omega": +, "-chi": -; its place in `rotated`: x, y or z). An entry
-    of any other expression has no one axis and sign: it is left out. With more than one entry
-    turned in one component, each axis is taken in its frame (exact for one)."""
+    """Find the rotation axes of an instrument, in beam order (outermost first).
+
+    Every ``rotated`` entry that is an instrument parameter gives an axis: its place in
+    ``rotated`` gives x, y or z, and a leading ``-`` the sign (``"omega"``: +, ``"-chi"``: -).
+    Any other expression has no single axis and sign, and is left out. When a component turns
+    about more than one axis, each is taken in the component's frame, which is exact only for
+    one.
+
+    Parameters
+    ----------
+    instrument:
+        The instrument.
+
+    Returns
+    -------
+    :
+        ``(component name, instrument parameter, axis)`` for each axis, with the unit axis
+        (signed) in the component's own frame.
+    """
     names = {p.name for p in instrument.instr_params}
     axes = []
     for name, c in instrument.components.items():
@@ -90,20 +116,36 @@ def rotation_axes(instrument: Instrument) -> list[tuple[str, str, np.ndarray]]:
 
 
 def top_view_svg(instrument: Instrument, path: str | Path | None = None) -> str:
-    """The instrument seen from above (+y), at its angles, as an SVG: the beam along +z to the
-    right, +x up; its components drawn by `SHAPES` and labelled, the beam a line through them in
-    order. Its rotation axes (`rotation_axes`) are numbered outermost first, each at its
-    component: one in the horizontal plane as an arrow, with a curved arrow the way the top (+y)
-    of the sample turns; a vertical one as a circular arrow, the way it turns seen from above.
-    Saved to `path` (None: not saved); returns the SVG text."""
+    """Draw an instrument seen from above (+y), at its current angles, as SVG.
+
+    The beam (+z) runs to the right and +x up. Components are drawn by ``SHAPES`` and labelled,
+    with the beam as a line through them in order. The rotation axes (:func:`rotation_axes`)
+    are numbered outermost first, each at its component:
+
+    - an axis in the horizontal plane as an arrow, with a curved arrow showing how the top (+y)
+      of the sample turns;
+    - a vertical axis as a circular arrow, showing how it turns seen from above.
+
+    Parameters
+    ----------
+    instrument:
+        The instrument.
+    path:
+        File to save the SVG to. If ``None``, it is not saved.
+
+    Returns
+    -------
+    :
+        The SVG text.
+    """
     from matplotlib.colors import to_hex  # only when drawn: importing does not need it
 
     instr_param_dict = {p.name: p.value for p in instrument.instr_params}
     placed = place_absolute(instrument.components, instr_param_dict)  # name -> (position, rotation)
 
-    def frame(name):
-        def lab(local=(0.0, 0.0, 0.0)):
-            """The point `local` (m) of the frame of `name`, in the lab frame."""
+    def frame(name: str) -> Lab:
+        def lab(local: Any = (0.0, 0.0, 0.0)) -> np.ndarray:
+            """Map the point ``local`` (m) of the frame of ``name`` to the lab frame."""
             position, rotation = placed[name]
             return position + rotation.T @ np.asarray(local, float)
 
@@ -125,19 +167,19 @@ def top_view_svg(instrument: Instrument, path: str | Path | None = None) -> str:
     width = (points[:, 2].max() - z0) * scale + 2 * margin
     height = (x1 - points[:, 0].min()) * scale + 2 * margin + top
 
-    def px(point):
+    def px(point: np.ndarray) -> np.ndarray:
         return np.array([(point[2] - z0) * scale + margin, (x1 - point[0]) * scale + margin + top])
 
-    def xy(p):
+    def xy(p: np.ndarray) -> str:
         return f"{p[0]:.1f},{p[1]:.1f}"
 
-    def line(a, b, colour, w=2, head=False):
+    def line(a: np.ndarray, b: np.ndarray, colour: str, w: float = 2, head: bool = False) -> str:
         end = ' marker-end="url(#head)"' if head else ""
         return (
             f'<path d="M{xy(a)} L{xy(b)}" fill="none" stroke="{colour}" stroke-width="{w}"{end}/>'
         )
 
-    def text(p, s, anchor="middle", colour="black"):
+    def text(p: Any, s: str, anchor: str = "middle", colour: str = "black") -> str:
         return (
             f'<text x="{p[0]:.1f}" y="{p[1]:.1f}" text-anchor="{anchor}" fill="{colour}">{s}</text>'
         )

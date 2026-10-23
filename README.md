@@ -2,8 +2,9 @@
 
 [![CI](https://github.com/bingli621/mcstas_to_sqe/actions/workflows/ci.yml/badge.svg)](https://github.com/bingli621/mcstas_to_sqe/actions/workflows/ci.yml)
 
-Single-crystal diffractometer simulation (McStasScript) with a three-axis goniometer, and
-tools to read the McStas NeXus output (McStasToX, scippneutron) and convert to momentum transfer.
+Neutron instruments described as components, built and simulated in McStas (McStasScript), with
+tools to read the McStas NeXus output (McStasToX, scippneutron) and convert it to momentum transfer.
+It comes with a single-crystal diffractometer with a three-axis goniometer, and ready-made samples.
 
 The diffractometer seen from above (`d.plot_top_view("output/top_view.svg")`): the goniometer axes
 numbered outermost first, each with the way a positive angle turns it.

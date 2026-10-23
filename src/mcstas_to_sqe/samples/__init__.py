@@ -29,7 +29,7 @@ __all__ = ["aluminum", "la2ni7"]
 
 
 def aluminum(**params: Any) -> Single_crystal:
-    """Create an fcc aluminium crystal with cubic axes along the lab axes.
+    """Create an fcc aluminum crystal with cubic axes along the lab axes.
 
     Uses the McStas built-in reflection list Al.lau.
 

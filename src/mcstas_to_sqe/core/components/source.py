@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 @dataclass(kw_only=True, repr=False)  # repr: Component's
 class Source_simple(Component):
-    """A monochromatic circular source, as McStas ``Source_simple``.
+    """A circular source of a wavelength band, as McStas ``Source_simple``.
 
     Placement (``at``, ``rotated``, ``relative``) is as in :class:`.Component`.
 

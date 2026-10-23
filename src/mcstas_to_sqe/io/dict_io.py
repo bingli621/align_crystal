@@ -92,8 +92,10 @@ def from_dict(data: dict) -> Instrument:
     Raises
     ------
     ValueError
-        If the class, a param, a unit, a component class or a component parameter is unknown
-        or missing.
+        If the instrument class is missing or unknown; if a param, a unit, a component class
+        or a component parameter is unknown; or if a component lacks a required parameter.
+    KeyError
+        If ``data`` has no ``params`` or no ``name``.
     """
     instrument_class = _instrument_class(data)
     data = copy.deepcopy(data)  # the components get its lists: not shared with the caller

@@ -1,4 +1,4 @@
-"""Normalization of the detector events: incident monitor intensity and pixel solid angle."""
+"""Normalization of the detector events by the incident monitor and the pixel solid angle."""
 
 from pathlib import Path
 
@@ -8,15 +8,36 @@ import scipp as sc
 
 from mcstas_to_sqe.mcstas.nexus_io import numeric_parameters
 
-from .solid_angle import rectangle_solid_angle
+from .solid_angle import Geometry, rectangle_solid_angle
 
 
-def detector_solid_angle(folder, component="detector", sample="sample_pos", geometry="cylinder"):
-    """Solid angle [sr] of every pixel of a banana (theta, y) detector, as a scipp DataArray over
-    'pixel_id' with the pixel `position` coordinate. Includes pixels that received no neutrons.
+def detector_solid_angle(
+    folder: str | Path,
+    component: str = "detector",
+    sample: str = "sample_pos",
+    geometry: Geometry = "cylinder",
+) -> sc.DataArray:
+    """Compute the solid angle of every pixel of a banana (theta, y) detector.
 
-    The pixel size comes from the detector's bin axes: arc length radius * d(theta) wide and
-    d(y) high.
+    The pixel size comes from the detector's bin axes: ``radius * d(theta)`` wide (arc length)
+    and ``d(y)`` high.
+
+    Parameters
+    ----------
+    folder:
+        Run folder with the ``mccode.h5``.
+    component:
+        Name of the detector component.
+    sample:
+        Name of the sample position component.
+    geometry:
+        Detector geometry; see :func:`.rectangle_solid_angle`.
+
+    Returns
+    -------
+    :
+        Solid angle in sr over ``pixel_id``, with the pixel ``position`` coord. Includes pixels
+        that received no neutrons.
     """
     with mcstastox.Read(str(folder)) as data:
         theta = data.file_object.get_x_var_and_axis(component)[1]
@@ -34,11 +55,23 @@ def detector_solid_angle(folder, component="detector", sample="sample_pos", geom
     )
 
 
-def incident_intensity(data, monitor="incident_monitor"):
-    """Integrated intensity [n/s] of the incident-beam monitor, as a scipp scalar with variance.
+def incident_intensity(data: mcstastox.Read, monitor: str = "incident_monitor") -> sc.Variable:
+    """Read the integrated intensity of the incident-beam monitor.
 
-    `data` is an open `mcstastox.Read` (it selects the scan entry). The McStas `Monitor` stores
-    `I  I_err  N` as one string in the `values` attribute of its output dataset.
+    The McStas ``Monitor`` stores ``I I_err N`` as one string in the ``values`` attribute of
+    its output dataset.
+
+    Parameters
+    ----------
+    data:
+        An open ``mcstastox.Read``, which selects the scan entry.
+    monitor:
+        Name of the monitor component.
+
+    Returns
+    -------
+    :
+        Scalar intensity with its variance, in ``counts``.
     """
     output = data.file_object.get_output_entry(monitor)
     values = output[f"{monitor}_dat"].attrs["values"].decode().split()
@@ -47,31 +80,56 @@ def incident_intensity(data, monitor="incident_monitor"):
 
 
 def normalize_scan(
-    folder,
-    out=None,
-    component="detector",
-    source="source",
-    sample="sample_pos",
-    monitor="incident_monitor",
-    monitor_file=None,
-):
-    """Normalize all events of every scan point; optionally save them.
+    folder: str | Path,
+    out: str | Path | None = None,
+    component: str = "detector",
+    source: str = "source",
+    sample: str = "sample_pos",
+    monitor: str = "incident_monitor",
+    monitor_file: str | Path | None = None,
+) -> sc.DataGroup:
+    """Normalize the events of every scan point, and optionally save them.
 
     Each event weight is divided by the incident monitor intensity and by the solid angle of the
-    pixel it hit, giving intensity per incident neutron per steradian [1/sr]. The events keep
-    their pixel grouping (`pixel_id`, `position`, `t` coordinates).
+    pixel it hit, giving intensity per incident neutron per steradian (1/sr). The events keep
+    their pixel grouping (``pixel_id``, ``position``, ``t`` coords).
 
-    The monitor is read from every scan entry of `folder`, unless `monitor_file` is given: for
-    data simulated from a beam dump (`scan_from_sample`) the monitor and the source are only in the
-    file of the beam run (`run_to_sample`, `mcstas_output/<time>_run_to_sample/mccode.h5`). That one monitor reading then
-    normalizes all angles, and the source position is rebuilt from the beam file (source ->
-    sample vector) so that the incident beam direction is known. The parameters of the beam run
-    fill in the ones the scan entries lack: a split run does not store the energy, since the
-    source is not in it.
+    Parameters
+    ----------
+    folder:
+        Run folder with the ``mccode.h5`` of the scan.
+    out:
+        If given, the result is also saved there with scipp's HDF5 writer; read it back with
+        ``scipp.io.load_hdf5``.
+    component:
+        Name of the detector component.
+    source:
+        Name of the source component.
+    sample:
+        Name of the sample position component.
+    monitor:
+        Name of the incident monitor component.
+    monitor_file:
+        ``mccode.h5`` of the beam run, for data simulated from a beam dump
+        (``scan_from_sample``); see :func:`.monitor_file`. If ``None``, the monitor is read
+        from every scan entry of ``folder``.
 
-    Returns a scipp DataGroup with one group per scan point (`entry1`, `entry2`, ...) holding
-    the instrument `parameters`, the `monitor_intensity` and the normalized `events`. If `out` is
-    given it is also saved there with scipp's HDF5 writer (`scipp.io.load_hdf5` reads it back).
+    Returns
+    -------
+    :
+        One group per scan point (``entry1``, ``entry2``, ...) with the instrument
+        ``parameters``, the ``monitor_intensity`` and the normalized ``events``.
+
+    Notes
+    -----
+    In a split run the monitor and the source are only in the beam run's file
+    (``mcstas_output/<time>_run_to_sample/mccode.h5``). With ``monitor_file``:
+
+    - that one monitor reading normalizes all scan points;
+    - the source position is rebuilt from the beam run's source -> sample vector, so the
+      incident beam direction is known;
+    - the beam run's parameters fill in those the scan entries lack, e.g. the energy, which a
+      split run does not store since the source is not in it.
     """
     folder = Path(folder)
     solid_angle = detector_solid_angle(folder, component, sample)

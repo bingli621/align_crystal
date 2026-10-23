@@ -17,9 +17,6 @@ An omega scan over 132 points of La2Ni7, in momentum transfer, normalized
 
 ## Layout
 
-The one description of the package layout: the package docstrings say what each package is, not
-what is in it.
-
 ```
 src/mcstas_to_sqe/   the library (installed)
   core/             the entities any instrument shares: an instrument is a set of components (no

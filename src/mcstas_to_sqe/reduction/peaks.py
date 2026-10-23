@@ -1,13 +1,15 @@
-"""Peak list from the normalized events in the sample-frame Q space.
+"""Peak list from the normalized events in sample-frame Q space.
 
-Every detector pixel hit in every scan point is one point in (Qx, Qy, Qz)_sample with a normalized
-weight w = sum(p) / (I0 * solid_angle) [1/sr]. Peaks are connected regions of high density in this
-point cloud; the peak position is the centre of mass of the weights in the region, and the
-uncertainties are propagated from the Monte Carlo statistics of the events and from the
-incident-monitor uncertainty of each scan point.
+Every detector pixel hit in every scan point is one point in (Qx, Qy, Qz)_sample, with the
+normalized weight ``w = sum(p) / (I0 * solid_angle)`` in 1/sr. Peaks are connected regions of
+high density in this point cloud. A peak's position is the centre of mass of the weights in its
+region. Its uncertainties are propagated from the Monte Carlo statistics of the events and from
+the incident-monitor uncertainty of each scan point.
 """
 
 from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
 
 import numpy as np
 import scipp as sc
@@ -20,27 +22,63 @@ from .reduction import run_wavelength, to_Q, to_sample_frame
 
 @dataclass
 class Peak:
-    """A peak in the sample-frame Q space. Q in 1/angstrom; intensity in 1/sr, summed over the
-    scan points (not divided by the scan step)."""
+    """A peak in sample-frame Q space.
 
-    q: np.ndarray  # centre of mass, (3,) Qx, Qy, Qz
-    q_cov: np.ndarray  # covariance of q, (3, 3)
+    Parameters
+    ----------
+    q:
+        (3,) centre of mass (Qx, Qy, Qz) in 1/Å.
+    q_cov:
+        (3, 3) covariance of ``q``.
+    intensity:
+        Integrated intensity in 1/sr, summed over the scan points (not divided by the scan
+        step).
+    intensity_err:
+        Uncertainty of ``intensity``.
+    n_points:
+        Number of pixel contributions (over all scan points) in the peak.
+    """
+
+    q: np.ndarray
+    q_cov: np.ndarray
     intensity: float
     intensity_err: float
-    n_points: int  # detector pixels (over all scan points) in the peak
+    n_points: int
 
     @property
-    def q_err(self):
+    def q_err(self) -> np.ndarray:
+        """(3,) standard uncertainty of ``q``, in 1/Å."""
         return np.sqrt(np.diag(self.q_cov))
 
 
-def load_points(folder, wavelength=None, **kwargs):
-    """Normalized scan as a point cloud in the sample-frame Q space. `wavelength` is a scipp scalar
-    (`reduction.wavelength(ei)`) for every scan point; None: the one each scan point stores.
+def load_points(
+    folder: str | Path, wavelength: sc.Variable | None = None, **kwargs: Any
+) -> dict[str, np.ndarray]:
+    """Load a normalized scan as a point cloud in sample-frame Q space.
 
-    Returns a dict with arrays over the pixel contributions of all scan points: `q` (N, 3),
-    `w` (normalized weight), `var` (its Monte Carlo variance, sum of squared event weights),
-    `scan` (scan point index), and per scan point `monitor` and `monitor_err` (n/s).
+    Parameters
+    ----------
+    folder:
+        Run folder with the ``mccode.h5`` of the scan.
+    wavelength:
+        Scalar wavelength for every scan point, e.g. from :func:`.wavelength`. If ``None``, the
+        wavelength each scan point stores.
+    **kwargs:
+        Passed on to :func:`.normalize_scan`.
+
+    Returns
+    -------
+    :
+        Arrays over the N pixel contributions of all scan points:
+
+        - ``q``: (N, 3) sample-frame Q in 1/Å;
+        - ``w``: normalized weight in 1/sr;
+        - ``var``: Monte Carlo variance of ``w``, the sum of squared event weights;
+        - ``scan``: index of the scan point;
+
+        and per scan point:
+
+        - ``monitor``, ``monitor_err``: incident monitor intensity and its uncertainty.
     """
     scan = normalize_scan(folder, **kwargs)
     q, w, var, idx, mon, mon_err = [], [], [], [], [], []
@@ -69,12 +107,42 @@ def load_points(folder, wavelength=None, **kwargs):
     }
 
 
-def centre_of_mass(q, w, var, scan, monitor, monitor_err):
-    """Centre of mass of the weights `w` at the points `q` (N, 3) with propagated errors.
+def centre_of_mass(
+    q: np.ndarray,
+    w: np.ndarray,
+    var: np.ndarray,
+    scan: np.ndarray,
+    monitor: np.ndarray,
+    monitor_err: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray, float, float]:
+    """Compute the centre of mass of weighted points, with propagated uncertainties.
 
-    Model: w_i = p_i / (I0_k Omega_i), with independent p_i (variance `var`) and one monitor
-    reading I0_k +- monitor_err per scan point k (`scan`). Returns q_c, its (3, 3) covariance,
-    the total weight and its uncertainty.
+    The model is ``w_i = p_i / (I0_k Omega_i)``, with independent event sums ``p_i`` and one
+    monitor reading ``I0_k`` per scan point ``k``.
+
+    Parameters
+    ----------
+    q:
+        (N, 3) point positions.
+    w:
+        (N,) weights.
+    var:
+        (N,) variances of ``w`` from the event statistics.
+    scan:
+        (N,) scan point index of each point.
+    monitor, monitor_err:
+        Monitor reading ``I0_k`` and its uncertainty, per scan point.
+
+    Returns
+    -------
+    q_c:
+        (3,) centre of mass.
+    cov:
+        (3, 3) covariance of ``q_c``.
+    W:
+        Total weight.
+    W_err:
+        Uncertainty of ``W``.
     """
     W = w.sum()
     qc = w @ q / W
@@ -92,29 +160,54 @@ def centre_of_mass(q, w, var, scan, monitor, monitor_err):
 
 
 def find_peaks(
-    folder,
-    wavelength=None,
-    voxel=0.04,
-    smooth=1.0,
-    nsigma=20.0,
-    radius=0.1,
-    min_points=5,
-    min_significance=3.0,
-    points=None,
-    monitor_file=None,
-):
-    """Find peaks in the sample-frame Q space of a scan; strongest first.
+    folder: str | Path,
+    wavelength: sc.Variable | None = None,
+    voxel: float = 0.04,
+    smooth: float = 1.0,
+    nsigma: float = 20.0,
+    radius: float = 0.1,
+    min_points: int = 5,
+    min_significance: float = 3.0,
+    points: dict[str, np.ndarray] | None = None,
+    monitor_file: str | Path | None = None,
+) -> list[Peak]:
+    """Find peaks in the sample-frame Q space of a scan.
 
-    The points are histogrammed on a grid with `voxel` (1/angstrom) spacing and smoothed with a
-    Gaussian of `smooth` voxels. Local maxima that exceed the background (median of the occupied
-    voxels) by `nsigma` robust standard deviations (MAD) are peak candidates. Every point in a
-    voxel above that threshold belongs to the nearest candidate if it is within `radius`
-    (1/angstrom, keep it below half the lattice spacing so neighbours are not merged). Peaks with
-    fewer than `min_points` pixel contributions, or an intensity below `min_significance` times
-    its uncertainty, are dropped. `wavelength` (a scipp scalar,
-    `reduction.wavelength(ei)`; None: the one the scan stores) is passed to `load_points`; give
-    `points` (from `load_points`) to reuse loaded data. For data from `scan_from_sample`, give the beam run's
-    `monitor_file` (see `normalize_scan`).
+    The points are histogrammed on a grid and smoothed. Local maxima that exceed the background
+    (median of the occupied voxels) by ``nsigma`` robust standard deviations (MAD) are peak
+    candidates. Every point in a voxel above that threshold belongs to the nearest candidate
+    within ``radius``.
+
+    Parameters
+    ----------
+    folder:
+        Run folder with the ``mccode.h5`` of the scan.
+    wavelength:
+        Scalar wavelength, passed to :func:`load_points`. If ``None``, the one the scan stores.
+    voxel:
+        Grid spacing in 1/Å.
+    smooth:
+        Width of the Gaussian smoothing, in voxels.
+    nsigma:
+        Threshold above the background, in robust standard deviations.
+    radius:
+        Maximum distance of a point from its peak's maximum, in 1/Å. Keep it below half the
+        lattice spacing so neighbouring peaks are not merged.
+    min_points:
+        Peaks with fewer pixel contributions are dropped.
+    min_significance:
+        Peaks with an intensity below this many times its uncertainty are dropped.
+    points:
+        Output of :func:`load_points`, to reuse loaded data. If ``None``, loaded from
+        ``folder``.
+    monitor_file:
+        For data from ``scan_from_sample``, the beam run's ``mccode.h5``; see
+        :func:`.normalize_scan`.
+
+    Returns
+    -------
+    :
+        The peaks, strongest first.
     """
     p = points if points is not None else load_points(folder, wavelength, monitor_file=monitor_file)
     q = p["q"]
